@@ -24,11 +24,15 @@ Keep the implementation in a single Cargo package with focused modules for confi
 4. The cloud publisher sends queued messages through ThingsBoard's MQTT Gateway API, then marks successful rows delivered. A failed/disconnected cloud connection leaves rows queued for retry.
 5. ThingsBoard RPC and local dashboard controls become validated device commands, then publish to that device's local MQTT command topic.
 
-The initial device set follows the current architecture: ESP1 publishes CO₂; ESP2 publishes its own state and TDS received from ESP3 over BLE. The exact local topic names, payload schema, measurement keys, units, timestamps, QoS, and command acknowledgements must be agreed with firmware before integration. Proposed local topics are `iot/{device_id}/telemetry` and `iot/{device_id}/command`; retain them only if the firmware can use them.
+The initial device set follows the current architecture: ESP1 publishes CO₂; ESP2 publishes its own state and TDS received from ESP3 over BLE. The exact local topic names, payload schema, measurement keys, units, timestamps, QoS, NanoMQ credentials, and command acknowledgements must be agreed with firmware before integration. Proposed local topics are `iot/{device_id}/telemetry` and `iot/{device_id}/command`; retain them only if the firmware can use them.
 
 ## ThingsBoard/CoreIOT boundary
 
-Use ThingsBoard's MQTT Gateway API so one Gateway access token can connect device identities and publish telemetry. Verify the target CoreIOT version's Gateway API topics, authentication, RPC payload, and response requirements before coding against them. Store the Gateway token and endpoint only in runtime configuration. Do not use HTTP login/JWT or maintain per-device credentials in this first version.
+Use ThingsBoard's MQTT Gateway API. Register one Gateway device in the CoreIOT UI and enable its `Is gateway` setting. The Rust app connects to the ThingsBoard MQTT endpoint with that device's access token as the MQTT username; the token stays in runtime configuration. Local ESPs authenticate only to NanoMQ and do not need ThingsBoard credentials.
+
+For each configured downstream ESP, publish `{"device":"<ThingsBoard device name>","type":"<device profile name>"}` to `v1/gateway/connect` and wait for its QoS 1 PUBACK before forwarding telemetry. The Gateway API creates the downstream device/profile if absent; pre-create devices when applying a specific template/profile or assignment is required. Publish telemetry to `v1/gateway/telemetry` with entries keyed by downstream device name. Subscribe to `v1/gateway/rpc`; route each message's target `device`, `data.id`, `data.method`, and `data.params` to the local device, then publish the result to the same topic with the request ID.
+
+The configured development server's OpenAPI document reports ThingsBoard 3.9.1. The deployed service must still be checked during integration, since public Gateway API docs are rolling docs and not version-pinned. Confirm MQTT TLS/port, gateway-mode support, device profiles, QoS/PUBACK handling, and RPC behavior on that instance before coding against it. Do not use HTTP login/JWT or maintain per-device ThingsBoard credentials in this first version.
 
 The initial CoreIOT work is telemetry forwarding and server-to-device RPC. CoreIOT device templates, dashboards, RuleChain, and threshold notifications remain under `thingsboard/` and are outside the Gateway application scope.
 
