@@ -87,12 +87,12 @@ impl Config {
             tb_gateway_token: required("TB_GATEWAY_TOKEN")?,
             devices: [
                 DeviceConfig {
-                    local_id: "ESP1".into(),
+                    local_id: "esp1".into(),
                     name: required("TB_DEVICE_ESP1")?,
                     profile: required("TB_PROFILE_ESP1")?,
                 },
                 DeviceConfig {
-                    local_id: "ESP2".into(),
+                    local_id: "esp2".into(),
                     name: required("TB_DEVICE_ESP2")?,
                     profile: required("TB_PROFILE_ESP2")?,
                 },
@@ -137,10 +137,10 @@ mod tests {
         assert_eq!(config.tb_mqtt_host, "thingsboard.example");
         assert_eq!(config.tb_mqtt_port, 1883);
         assert_eq!(config.tb_gateway_token, "secret-value");
-        assert_eq!(config.devices[0].local_id, "ESP1");
+        assert_eq!(config.devices[0].local_id, "esp1");
         assert_eq!(config.devices[0].name, "ESP1");
         assert_eq!(config.devices[0].profile, "CO2 Sensor");
-        assert_eq!(config.devices[1].local_id, "ESP2");
+        assert_eq!(config.devices[1].local_id, "esp2");
         assert_eq!(config.devices[1].name, "ESP2");
         assert_eq!(config.devices[1].profile, "TDS Sensor");
     }

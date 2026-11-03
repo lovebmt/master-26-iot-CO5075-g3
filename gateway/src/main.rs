@@ -1,4 +1,5 @@
 mod config;
+mod telemetry;
 
 #[tokio::main]
 async fn main() {
