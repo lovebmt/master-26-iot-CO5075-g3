@@ -44,7 +44,10 @@ fn parse_at(
         .ok_or_else(|| anyhow!("telemetry must be an object"))?;
     let timestamp_ms = match object.get("ts") {
         None => now_ms,
-        Some(value) => value.as_u64().ok_or_else(|| anyhow!("ts must be a non-negative integer"))?,
+        Some(value) => value
+            .as_u64()
+            .filter(|timestamp| *timestamp <= i64::MAX as u64)
+            .ok_or_else(|| anyhow!("ts must fit a non-negative SQLite integer"))?,
     };
     let values = object
         .get("values")
@@ -166,6 +169,25 @@ mod tests {
     fn falls_back_to_injected_receive_timestamp() {
         let item = parse_at("esp1", br#"{"values":{"co2_ppm":620}}"#, &devices(), 42).unwrap();
         assert_eq!(item.timestamp_ms, 42);
+    }
+
+    #[test]
+    fn timestamp_must_fit_sqlite_signed_integer() {
+        let max = parse_at(
+            "esp1",
+            br#"{"ts":9223372036854775807,"values":{"co2_ppm":620}}"#,
+            &devices(),
+            1,
+        )
+        .unwrap();
+        assert_eq!(max.timestamp_ms, i64::MAX as u64);
+        assert!(parse_at(
+            "esp1",
+            br#"{"ts":9223372036854775808,"values":{"co2_ppm":620}}"#,
+            &devices(),
+            1,
+        )
+        .is_err());
     }
 
     #[test]
