@@ -141,6 +141,7 @@ mod tests {
         assert_eq!(config.devices[0].name, "ESP1");
         assert_eq!(config.devices[0].profile, "CO2 Sensor");
         assert_eq!(config.devices[1].local_id, "ESP2");
+        assert_eq!(config.devices[1].name, "ESP2");
         assert_eq!(config.devices[1].profile, "TDS Sensor");
     }
 
@@ -157,6 +158,22 @@ mod tests {
         let error = Config::from_iter(env).err().unwrap().to_string();
         assert!(error.contains("TB_GATEWAY_TOKEN"));
         assert!(!error.contains("secret-value"));
+    }
+
+    #[test]
+    fn missing_nanomq_host_is_rejected() {
+        let mut env = valid_env();
+        env.remove("NANOMQ_HOST");
+        let error = Config::from_iter(env).err().unwrap().to_string();
+        assert!(error.contains("NANOMQ_HOST"));
+    }
+
+    #[test]
+    fn missing_thingsboard_host_is_rejected() {
+        let mut env = valid_env();
+        env.remove("TB_MQTT_HOST");
+        let error = Config::from_iter(env).err().unwrap().to_string();
+        assert!(error.contains("TB_MQTT_HOST"));
     }
 
     #[test]
