@@ -28,6 +28,7 @@ pub struct OutboxEntry {
     pub last_error: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct Store {
     pool: SqlitePool,
 }

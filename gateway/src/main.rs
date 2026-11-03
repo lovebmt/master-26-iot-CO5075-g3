@@ -1,6 +1,4 @@
-mod config;
-mod store;
-mod telemetry;
+use iot_gateway::{config::Config, local_mqtt::LocalMqtt, store::Store};
 
 #[tokio::main]
 async fn main() {
@@ -15,8 +13,18 @@ async fn main() {
 }
 
 async fn start() -> anyhow::Result<()> {
-    let config = config::Config::from_env()?;
-    let _store = store::Store::connect(&config.database_url).await?;
+    let config = Config::from_env()?;
+    let store = Store::connect(&config.database_url).await?;
+    let mqtt = LocalMqtt::start(
+        &config.nanomq_host,
+        config.nanomq_port,
+        &config.nanomq_username,
+        &config.nanomq_password,
+        config.devices.to_vec(),
+        store,
+    )
+    .await?;
     tokio::signal::ctrl_c().await?;
+    mqtt.stop();
     Ok(())
 }
