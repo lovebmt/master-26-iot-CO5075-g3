@@ -122,7 +122,7 @@ mod tests {
             ("TB_PROFILE_ESP1", "CO2 Sensor"),
             ("TB_DEVICE_ESP2", "ESP2"),
             ("TB_PROFILE_ESP2", "TDS Sensor"),
-            ("DATABASE_URL", "sqlite://gateway.db"),
+            ("DATABASE_URL", "sqlite://gateway.db?mode=rwc"),
         ]
         .into_iter()
         .map(|(key, value)| (key.to_owned(), value.to_owned()))

@@ -1,6 +1,11 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use serde::Serialize;
-use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
+    SqlitePool,
+};
 
 use crate::telemetry::NormalizedTelemetry;
 
@@ -29,7 +34,8 @@ pub struct Store {
 
 impl Store {
     pub async fn connect(database_url: &str) -> Result<Self> {
-        let pool = SqlitePoolOptions::new().max_connections(1).connect(database_url).await?;
+        let options = SqliteConnectOptions::from_str(database_url)?.create_if_missing(true);
+        let pool = SqlitePoolOptions::new().max_connections(1).connect_with(options).await?;
         sqlx::migrate!("./migrations").run(&pool).await?;
         Ok(Self { pool })
     }
@@ -44,7 +50,7 @@ impl Store {
         let mut tx = self.pool.begin().await?;
         sqlx::query("INSERT INTO device_state (device_id, thingsboard_name, payload_json, last_seen_ms) VALUES (?, ?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET thingsboard_name = excluded.thingsboard_name, payload_json = excluded.payload_json, last_seen_ms = excluded.last_seen_ms")
             .bind(&item.device_id).bind(&item.thingsboard_name).bind(&payload_json)
-            .bind(i64::try_from(item.timestamp_ms)?).execute(&mut *tx).await?;
+            .bind(received_at_ms).execute(&mut *tx).await?;
         sqlx::query("INSERT INTO telemetry_outbox (device_id, payload_json, created_at_ms, next_attempt_ms) VALUES (?, ?, ?, ?)")
             .bind(&item.device_id).bind(&payload_json).bind(received_at_ms).bind(received_at_ms)
             .execute(&mut *tx).await?;
@@ -59,6 +65,7 @@ impl Store {
     }
 
     pub async fn pending(&self, now_ms: i64, limit: i64) -> Result<Vec<OutboxEntry>> {
+        anyhow::ensure!(limit > 0, "pending limit must be positive");
         Ok(sqlx::query_as::<_, (i64, String, String, i64, i64, i64, Option<String>)>("SELECT id, device_id, payload_json, created_at_ms, attempts, next_attempt_ms, last_error FROM telemetry_outbox WHERE next_attempt_ms <= ? ORDER BY id ASC LIMIT ?")
             .bind(now_ms).bind(limit).fetch_all(&self.pool).await?
             .into_iter().map(|(id, device_id, payload_json, created_at_ms, attempts, next_attempt_ms, last_error)| OutboxEntry { id, device_id, payload_json, created_at_ms, attempts, next_attempt_ms, last_error }).collect())
@@ -103,13 +110,31 @@ mod tests {
 
         let state = store.latest_state("esp1").await.unwrap().unwrap();
         assert_eq!(state.thingsboard_name, "esp1 device");
-        assert_eq!(state.last_seen_ms, 20);
+        assert_eq!(state.last_seen_ms, 200);
         assert_eq!(state.payload_json, r#"{"ts":20,"values":{"co2_ppm":700}}"#);
 
         let pending = store.pending(200, 10).await.unwrap();
         assert_eq!(pending.len(), 2);
         assert_eq!(pending[0].created_at_ms, 100);
         assert_eq!(pending[1].created_at_ms, 200);
+    }
+
+    #[tokio::test]
+    async fn pending_rejects_nonpositive_limits() {
+        let store = store().await;
+        assert!(store.pending(0, 0).await.is_err());
+        assert!(store.pending(0, -1).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn creates_and_migrates_fresh_database_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let database_path = directory.path().join("gateway.db");
+        let url = format!("sqlite://{}?mode=rwc", database_path.display());
+
+        let store = Store::connect(&url).await.unwrap();
+        assert!(store.latest_state("esp1").await.unwrap().is_none());
+        assert!(database_path.exists());
     }
 
     #[tokio::test]
