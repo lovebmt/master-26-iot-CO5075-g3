@@ -7,18 +7,39 @@ Hệ thống giám sát nhiệt độ và độ ẩm không khí trong nhà nấ
 | Thành phần | Phụ trách | Đầu ra và điều kiện nghiệm thu |
 |---|---|---|
 | ESP1 | Vũ | DHT20 đo nhiệt độ và độ ẩm qua I²C, gửi bản tin MQTT thật. Bàn giao cấu hình, mẫu bản tin và minh chứng đọc cảm biến. T01 cần xác nhận đọc được trên Tasmota. |
-| ESP2 | Phương | Điều khiển quạt và phục vụ web tại chỗ (T07). Bàn giao firmware, hướng dẫn nạp và log cho thấy lệnh được áp dụng, trạng thái được báo lại. |
+| ESP3 | Tâm | Đọc nhiệt độ và độ ẩm qua Modbus RS485 và gửi qua BLE. Bàn giao firmware, sơ đồ đấu nối và log ESP2 nhận đúng dữ liệu. |
+| ESP2 | Phương | Nhận dữ liệu ESP3 qua BLE, chuyển tiếp qua MQTT, điều khiển quạt và phục vụ web tại chỗ (T07). Bàn giao firmware, hướng dẫn nạp và log cho thấy lệnh được áp dụng, trạng thái được báo lại. |
 | PC | Tâm | Dịch vụ môi giới MQTT chuyển bản tin. Gateway chuẩn hóa số đo, xử lý quy tắc bật/tắt tự động, chuyển lệnh đến ESP2 và đồng bộ hai chiều với ThingsBoard. Bàn giao giao diện tại chỗ (T10), hướng dẫn chạy và log tích hợp. |
 | ThingsBoard | Phương | Bàn giao cấu hình mẫu thiết bị, bảng điều khiển, chuỗi quy tắc (RuleChain), thông báo và minh chứng tự triển khai (N07). Bảng điều khiển hiển thị số đo, điều khiển quạt qua Gateway và nhận trạng thái phản hồi. |
 | Báo cáo và video | Vũ tổng hợp | Mỗi thành viên viết phần mình, giao số liệu và đoạn quay. Vũ biên tập PDF theo mẫu, ghép video và đưa mốc minh chứng vào bảng tự đánh giá. |
 
+### Sơ đồ thành phần
+
+```mermaid
+flowchart LR
+    DHT["DHT20 · nhiệt độ và độ ẩm"] -->|I²C| ESP1["ESP1 · Vũ"]
+    SENSOR["Cảm biến nhiệt độ và độ ẩm"] -->|Modbus RS485| ESP3["ESP3 · Tâm"]
+    ESP3 -->|BLE · dữ liệu đo| ESP2["ESP2 · Phương"]
+
+    subgraph PC["PC · Tâm"]
+        BROKER["MQTT broker"]
+        GW["Gateway · chuẩn hóa dữ liệu và điều khiển theo ngưỡng"]
+        LOCAL["Web tại Gateway · T10"]
+        BROKER <-->|Dữ liệu, lệnh và phản hồi| GW
+        GW <--> LOCAL
+    end
+
+    ESP1 -->|MQTT · dữ liệu đo| BROKER
+    ESP2 <-->|MQTT · dữ liệu, lệnh và phản hồi| BROKER
+    GW <-->|Dữ liệu, lệnh và phản hồi| TB["ThingsBoard · Phương"]
+    TB --- UI["Dashboard · RuleChain · thông báo"]
+    ESP2 --- WEB["Web trên ESP2 · T07"]
+    ESP2 -->|Bật hoặc tắt| FAN["Quạt thông gió"]
+```
+
 Luồng số đo đi từ DHT20 → ESP1 → dịch vụ môi giới MQTT → Gateway → ThingsBoard. Lệnh từ ThingsBoard đi qua Gateway và MQTT đến ESP2. Web T07 gọi bộ xử lý quạt ngay trên ESP2. Web T10 gọi Gateway. Các giao diện dùng trạng thái do ESP2 công bố.
 
-ESP3 do Tâm phụ trách nếu nhóm chọn thêm một điểm đo **nhiệt độ và độ ẩm không khí** qua cảm biến Modbus RS485, rồi chuyển dữ liệu qua BLE đến ESP2. Cần chốt phần cứng và vai trò điểm đo trước khi đưa đường này vào phạm vi nghiệm thu.
-
-## Quy trình cập nhật tài liệu
-
-Soạn và cập nhật tài liệu trong thư mục `BaiNhom`. Vũ duyệt nội dung trước khi đồng bộ bản đã duyệt sang repo. Mọi lần sửa sau áp dụng cùng quy trình.
+Đường đo thứ hai đi từ cảm biến nhiệt độ và độ ẩm không khí → Modbus RS485 → ESP3 → BLE → ESP2 → MQTT → Gateway → ThingsBoard. Đây là đường tích hợp bắt buộc của kiến trúc nhóm. Tâm và Phương chốt mã cảm biến, cấu hình Modbus và bản tin BLE trước khi tích hợp.
 
 ## Phân công viết báo cáo theo mẫu của giảng viên
 
@@ -29,12 +50,12 @@ Bản Word làm việc của nhóm nằm trong repo tại `present/report/source
 | Trang đầu, thông tin nộp bài, bảng phân công, bảng tự đánh giá | Vũ tổng hợp | Thông tin nhóm, đường dẫn GitHub và video, tỷ lệ đóng góp thực tế, mã công nghệ và minh chứng. Phương và Tâm cung cấp minh chứng phần mình. |
 | Chương 1. Giới thiệu | Vũ | Bài toán nhà nấm, các công trình liên quan, mục tiêu đo được, danh sách tính năng Fxx và phạm vi. |
 | 2.1–2.2 và 2.4–2.6 | Vũ tổng hợp | Sơ đồ kiến trúc, phân rã chức năng, ánh xạ Fxx với Txx/Nxx, công nghệ mới nếu có và bảng phần cứng. Mỗi người xác nhận thành phần mình làm. |
-| 2.3.1 Lớp cảm biến | Vũ | DHT20, đại lượng đo, đơn vị, chu kỳ và căn cứ chọn cảm biến. Tâm bổ sung điểm đo Modbus nếu được triển khai. |
-| 2.3.2–2.3.3 Lớp giao tiếp và Gateway | Tâm | Luồng MQTT, cấu trúc số đo và lệnh, xử lý tại Gateway. Phương đối chiếu đầu nhận ESP2 và ThingsBoard. Bổ sung BLE nếu triển khai ESP3. |
+| 2.3.1 Lớp cảm biến | Vũ | DHT20, đại lượng đo, đơn vị, chu kỳ và căn cứ chọn cảm biến. Tâm bổ sung điểm đo Modbus của ESP3. |
+| 2.3.2–2.3.3 Lớp giao tiếp và Gateway | Tâm | Luồng MQTT, cấu trúc số đo và lệnh, xử lý tại Gateway. Phương đối chiếu đầu nhận ESP2 và ThingsBoard. Mô tả đường Modbus và BLE từ cảm biến qua ESP3 đến ESP2. |
 | 2.3.4 Lớp trí tuệ nhân tạo và 3.5 Trí tuệ nhân tạo | Vũ | Giữ các mục theo mẫu và ghi rõ phạm vi hiện tại dùng điều khiển theo ngưỡng. |
 | 2.3.5 Lớp ứng dụng và nền tảng | Phương | Bảng điều khiển, RuleChain, thông báo và phần thay thế CoreIOT bằng ThingsBoard đã được xác nhận. |
 | 3.1 Phần cứng và sơ đồ kết nối | Vũ tổng hợp | Mỗi người giao sơ đồ nối dây, mã thiết bị và ảnh phần cứng thật của mình. |
-| 3.2 Firmware trên thiết bị | Vũ, Phương và Tâm theo thiết bị | Vũ viết ESP1, Phương viết ESP2 và web T07. Tâm viết ESP3 nếu có. Vũ ghép vào các mục tương ứng của mẫu. |
+| 3.2 Firmware trên thiết bị | Vũ, Phương và Tâm theo thiết bị | Vũ viết ESP1, Phương viết ESP2 và web T07. Tâm viết ESP3. Vũ ghép vào các mục tương ứng của mẫu. |
 | 3.3–3.4 Truyền thông và Gateway | Tâm | Luồng bản tin, xử lý lệnh tự động, giao diện T10, xác nhận lệnh và log tích hợp. Phương cung cấp log từ ESP2. |
 | 3.6–3.7 Nền tảng và tính năng nâng cao | Phương | Cấu hình ThingsBoard, kết quả thông báo, minh chứng N07, LVGL hoặc OTA nếu thực hiện. Giữ các mục theo mẫu và ghi trạng thái thực tế. |
 | Chương 4. Đo đạc và thử nghiệm | Tâm lập bảng số liệu, Vũ biên tập | Vũ giao số đo cảm biến. Phương giao log trạng thái quạt, dashboard và cảnh báo. Tâm tổng hợp độ trễ, thử đúng ngưỡng và đánh giá từ dữ liệu đã đo. |
@@ -48,7 +69,7 @@ Trước khi nộp, Vũ đối chiếu bản Word với mẫu gốc theo từng 
 
 - **Vũ:** Cấu hình ESP1, sơ đồ đấu nối DHT20, bản tin MQTT thật và số liệu nhiệt độ–độ ẩm. Viết các mục được giao trong Word chung, quay ESP1, chốt PDF và ghép video.
 - **Phương:** Firmware và hướng dẫn nạp ESP2, cấu hình ThingsBoard có thể nhập lại, ảnh hoặc log của web T07, trạng thái quạt, bảng điều khiển và thông báo thực nhận. Viết các mục ESP2 và ThingsBoard trong Word chung, quay phần điều khiển và cảnh báo.
-- **Tâm:** Mã nguồn và hướng dẫn chạy Gateway, giao diện T10, bản tin mẫu, log lệnh và phản hồi, bảng số liệu thử nghiệm. Viết các mục giao tiếp, Gateway, thử nghiệm và hướng dẫn chạy trong Word chung, quay phần tích hợp. Nếu triển khai ESP3, bàn giao thêm firmware, sơ đồ đấu nối và log Modbus/BLE.
+- **Tâm:** Mã nguồn và hướng dẫn chạy Gateway, giao diện T10, bản tin mẫu, log lệnh và phản hồi, bảng số liệu thử nghiệm. Viết các mục giao tiếp, Gateway, thử nghiệm và hướng dẫn chạy trong Word chung, quay phần tích hợp. Bàn giao thêm firmware, sơ đồ đấu nối và log Modbus/BLE.
 
 Mỗi người lưu tệp minh chứng và clip gốc trong thư mục chung, ghi mã Txx/Nxx và mục báo cáo tương ứng để Vũ đối chiếu khi tổng hợp.
 
@@ -64,6 +85,7 @@ Mỗi người lưu tệp minh chứng và clip gốc trong thư mục chung, gh
 |---|---|
 | Bản tin ESP1 | Giữ bản tin gốc từ thiết bị. Vũ và Tâm dùng một bản tin thật để chốt chủ đề MQTT và ánh xạ trường. |
 | Số đo chuẩn hóa | `source_id`, `zone_id`, `temperature_c` theo °C, `humidity_pct` theo %RH, `ts_ms` theo thời gian Unix mili giây, `time_source` và `simulated`. Nếu Gateway gắn thời điểm nhận, dùng `time_source: "gateway_received"`. |
+| ESP3 → ESP2 → Gateway | ESP3 gửi nhiệt độ và độ ẩm qua BLE. ESP2 chuyển tiếp qua MQTT, giữ nguồn `esp3` và số thứ tự mẫu `seq` để đối chiếu khi nghiệm thu. |
 | Lệnh quạt | Gateway gửi đến `g3/esp2/command`, ESP2 trả kết quả tại `g3/esp2/ack` với cùng `request_id`. Lệnh đặt trạng thái đích và tắt lưu lệnh (MQTT retain). |
 | Trạng thái | ESP2 công bố `fan_on` và `mode` tại `g3/esp2/status`. Khi hết hạn phản hồi, giao diện báo chưa xác nhận. Khi mất mẫu đo, đánh dấu dữ liệu cũ và tạm dừng phát lệnh tự động dựa trên mẫu đó. |
 
@@ -89,11 +111,11 @@ Mỗi người lưu tệp minh chứng và clip gốc trong thư mục chung, gh
 | Độ trễ dữ liệu | Từ lúc Gateway nhận bản tin đến lúc mẫu tương ứng hiển thị trên ThingsBoard. |
 | Độ trễ điều khiển | Từ lúc Gateway gửi lệnh MQTT đến lúc nhận `applied` với cùng `request_id`. Ghi riêng các lần hết hạn. |
 | Phản ứng môi trường | Ghi nhiệt độ và độ ẩm trước và sau khi quạt chạy, kèm điều kiện thử. |
-| BLE nếu triển khai ESP3 | So số bản tin hợp lệ, không trùng tại ESP2 với số bản tin ESP3 gửi trong cùng lượt thử. |
+| Tỷ lệ nhận BLE từ ESP3 | So số bản tin hợp lệ, không trùng tại ESP2 với số bản tin ESP3 gửi trong cùng lượt thử. |
 
 Các phép đo độ trễ cần lặp lại và báo cáo số lần thử, trung bình, nhỏ nhất và lớn nhất. Video 5–10 phút nên thể hiện số đo thật, một chu kỳ bật/tắt tự động, thao tác thủ công, thông báo thực nhận và minh chứng triển khai ThingsBoard.
 
-Theo thang điểm trong thông báo, T07/T08/T10/T11/T12/T13 có tổng dự kiến **5,5 điểm** nếu hoàn thành và có minh chứng. T01 thêm 0,5 điểm khi đọc I²C trên Tasmota. T02/T03 thêm tối đa 2,5 điểm nếu hiện thực đường Modbus/BLE. T14 là phương án bổ sung nếu triển khai OTA có minh chứng. Công nghệ áp trần 8 điểm, báo cáo tối đa 2 điểm, N07 và N03 cùng thuộc phần điểm cộng tối đa 1 điểm. Tổng điểm bài tập lớn tối đa 10.
+Theo thang điểm trong thông báo, T07/T08/T10/T11/T12/T13 có tổng dự kiến **5,5 điểm** nếu hoàn thành và có minh chứng. T01 thêm 0,5 điểm khi đọc I²C trên Tasmota. T02/T03 thuộc phạm vi bắt buộc của kiến trúc nhóm, đóng góp 2,5 điểm khi có minh chứng đọc Modbus và truyền BLE. Cùng với T07/T08/T10/T11/T12/T13, tổng điểm công nghệ dự kiến là 8 điểm nếu hoàn thành đủ. T14 là phương án bổ sung nếu triển khai OTA có minh chứng. Công nghệ áp trần 8 điểm, báo cáo tối đa 2 điểm, N07 và N03 cùng thuộc phần điểm cộng tối đa 1 điểm. Tổng điểm bài tập lớn tối đa 10.
 
 ## Nguồn tham khảo cho báo cáo
 
