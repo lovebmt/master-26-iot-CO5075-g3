@@ -11,6 +11,7 @@ pub struct ThingsBoard {
     pub rpc_rx: mpsc::Receiver<Value>,
     _event_task: JoinHandle<()>,
     _outbox_task: JoinHandle<()>,
+    #[allow(dead_code)]
     client: AsyncClient,
 }
 
