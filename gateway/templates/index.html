@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IoT Gateway</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<header class="app-header">
+  <h1>IoT Gateway — Management Console</h1>
+  <div class="user-meta">
+    <span>Logged in as: <strong>admin</strong></span>
+    <a href="/logout" class="logout-btn">Logout</a>
+  </div>
+</header>
+
+<div class="cloud-status-card">
+  <h3>CoreIOT (ThingsBoard) Connection</h3>
+  <div class="cloud-grid">
+    <div><strong>Host:</strong> {{ tb_host }}:{{ tb_port }}</div>
+    <div><strong>Device:</strong> {{ tb_device }}</div>
+    <div><strong>Status:</strong> <span class="badge badge-ok">Connected (MQTT TLS)</span></div>
+  </div>
+</div>
+
+<main>
+  <div id="dashboard-content" hx-get="/devices" hx-trigger="load, every 5s" hx-swap="innerHTML">
+    Loading…
+  </div>
+</main>
+</body>
+</html>
+

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chart — {{ device_id }}</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="app-header">
+  <p><a href="/">&larr; Back to Dashboard</a></p>
+  <div class="user-meta">
+    <span>Logged in as: <strong>admin</strong></span>
+    <a href="/logout" class="logout-btn">Logout</a>
+  </div>
+</header>
+<h1>Device History: {{ device_id }}</h1>
+
+<div class="chart-controls">
+  <span>Select metrics:</span>
+  {% for m in metrics %}
+  <label class="metric-chip">
+    <input type="checkbox" class="metric-toggle" value="{{ m }}" checked onchange="updateChart()">
+    {{ m }}
+  </label>
+  {% else %}
+  <em>No history recorded yet for this device. Send telemetry first!</em>
+  {% endfor %}
+</div>
+
+<div class="chart-container">
+  <canvas id="timeSeriesChart"></canvas>
+</div>
+
+<script>
+const rawData = {{ series_json|safe }};
+const colors = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#0891b2'];
+let chart = null;
+
+function renderChart() {
+  const selected = Array.from(document.querySelectorAll('.metric-toggle:checked')).map(el => el.value);
+  const datasets = [];
+  let colorIdx = 0;
+
+  for (const m of selected) {
+    const pts = rawData[m] || [];
+    datasets.push({
+      label: m,
+      data: pts.map(p => ({ x: new Date(p[0]).toLocaleTimeString(), y: p[1] })),
+      borderColor: colors[colorIdx % colors.length],
+      backgroundColor: colors[colorIdx % colors.length] + '22',
+      tension: 0.25,
+      fill: false,
+    });
+    colorIdx++;
+  }
+
+  const ctx = document.getElementById('timeSeriesChart').getContext('2d');
+  if (chart) { chart.destroy(); }
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: 'Time' } },
+        y: { title: { display: true, text: 'Value' } }
+      }
+    }
+  });
+}
+
+function updateChart() { renderChart(); }
+window.onload = renderChart;
+</script>
+</body>
+</html>
+
