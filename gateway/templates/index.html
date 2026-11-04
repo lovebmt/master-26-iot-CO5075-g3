@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IoT Gateway</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<h1>IoT Gateway — Device Status</h1>
+<div hx-get="/devices" hx-trigger="load, every 5s" hx-swap="innerHTML">
+  Loading…
+</div>
+</body>
+</html>
+

@@ -1,0 +1,13 @@
+/* IoT Gateway local dashboard */
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
+h1{font-size:1.4rem;margin-bottom:1.5rem}
+table{width:100%;border-collapse:collapse;font-size:.93rem}
+th,td{text-align:left;padding:.5rem .7rem;border-bottom:1px solid #ddd}
+th{background:#f4f4f4;font-weight:600}
+.stale{color:#888}
+.ok{color:#2a7a2a}
+form.light-ctrl{display:inline}
+button{cursor:pointer;padding:.25rem .7rem;border:1px solid #aaa;border-radius:4px;background:#fff;font-size:.85rem}
+button:hover{background:#eef}
+
