@@ -1,138 +1,113 @@
----
-title: Đề xuất kiến trúc và phân công bài tập lớn IoT Nhóm 3
-tags:
-  - iot
-  - bai-tap-lon
-status: cho-vu-duyet
----
+# Tổng quan bài tập lớn IoT Nhóm 3
 
-# Tổng quan và phân công bài tập lớn IoT Nhóm 3
+Hệ thống giám sát nhiệt độ và độ ẩm không khí trong nhà nấm, bật/tắt quạt thông gió theo ngưỡng nhiệt độ và gửi cảnh báo khi độ ẩm ra ngoài dải cấu hình. Nhóm dùng ThingsBoard tự triển khai làm nền tảng giám sát và điều khiển. Loài nấm, giai đoạn trồng và ngưỡng vận hành được chốt sau khi đối chiếu tài liệu và điều kiện thử nghiệm.
 
-Hệ thống theo dõi nồng độ CO₂ theo thời gian tại các khu vực trong nhà nấm. Theo phương án của nhóm, mô hình hồi quy tuyến tính (linear regression) ước tính thời điểm nồng độ CO₂ có thể giảm xuống dưới ngưỡng cấu hình. Kết quả dự báo dùng để phát cảnh báo sớm. Nhóm sử dụng ThingsBoard tự triển khai thay CoreIOT để truy cập API và lưu căn cứ xác nhận phương án thay thế cùng hồ sơ bài tập.
+## Kiến trúc và phân công
 
-Một cảm biến CO₂ hiện chỉ đủ để kiểm chứng một khu vực tại một thời điểm. Bản tin cần có mã khu vực `zone_id` để giữ riêng lịch sử từng khu. Muốn giám sát đồng thời nhiều khu vực cần bố trí thêm điểm đo. Xu hướng giảm và ngưỡng CO₂ cần được xác nhận bằng dữ liệu và yêu cầu vận hành thực tế. Vai trò của TDS và đèn trong nhà nấm còn chờ nhóm chốt. Trong phạm vi tích hợp ban đầu, TDS là luồng đo qua Modbus/BLE và đèn là tải minh họa cho lệnh điều khiển.
-
-Cảnh báo là đầu ra của bản đầu. Phương án bơm oxy là ý tưởng mở rộng, cần xác nhận yêu cầu vận hành, thiết bị chấp hành và điều kiện an toàn trước khi đưa vào phạm vi triển khai.
-
-## Thành phần hệ thống
-
-| Thành phần | Vai trò |
-|---|---|
-| ESP1 — Vũ | YoloUNO chạy Tasmota, đọc CO₂ qua I²C và gửi MQTT. |
-| ESP3 — Tâm | YoloUNO đọc TDS qua Modbus RS485 và gửi bản tin qua BLE NUS. |
-| ESP2 — Phương | YoloUNO nhận TDS qua BLE, chuyển tiếp MQTT, điều khiển đèn và phục vụ web tại chỗ. LVGL và OTA triển khai theo tiến độ. |
-| PC | Dịch vụ môi giới MQTT (broker) chuyển bản tin. Ứng dụng Gateway nhận và chuẩn hóa dữ liệu, cung cấp giao diện tại chỗ, kết nối ThingsBoard hai chiều. |
-| ThingsBoard tự triển khai | Máy chủ nhóm dùng cho mẫu thiết bị, bảng điều khiển, chuỗi quy tắc (RuleChain), thông báo và minh chứng N07. |
-
-```text
-CO₂ ── I²C ── ESP1 ── MQTT ───────────────────┐
-                                               ▼
-TDS ── RS485 ── ESP3 ── BLE ── ESP2 ── MQTT ── Broker ↔ Gateway ↔ ThingsBoard
-                                  ├─ Web T07             └─ Web T10
-                                  └─ Đèn
-```
-
-Lệnh từ ThingsBoard đi ngược qua Gateway và MQTT đến ESP2. Web T07 gọi bộ xử lý đèn ngay trên ESP2. Web T10 gọi Gateway. Cả ba giao diện dùng trạng thái ESP2 công bố.
-
-## Phân công và bàn giao
-
-| Người | Phần chính | Bàn giao |
+| Thành phần | Phụ trách | Đầu ra và điều kiện nghiệm thu |
 |---|---|---|
-| **Vũ** | ESP1, biên tập PDF và ghép video demo | Cấu hình Tasmota, bản tin MQTT thật, minh chứng T01, PDF và video hoàn chỉnh. |
-| **Phương** | ESP2 và ThingsBoard. Phụ trách BLE/MQTT, đèn, web T07, mẫu thiết bị, bảng điều khiển, RuleChain và thông báo. LVGL và OTA theo tiến độ. | Firmware, mẫu lệnh và phản hồi, cấu hình ThingsBoard có thể nhập lại và minh chứng T07/T11–T13/N07. |
-| **Tâm** | ESP3, chương trình Gateway trên PC, giao diện T10 và dự báo CO₂ trên Gateway | Firmware, log đọc Modbus, bản tin BLE mẫu, hướng dẫn chạy Gateway và dữ liệu thử dự báo. |
+| ESP1 | Vũ | DHT20 đo nhiệt độ và độ ẩm qua I²C, gửi bản tin MQTT thật. Bàn giao cấu hình, mẫu bản tin và minh chứng đọc cảm biến. T01 cần xác nhận đọc được trên Tasmota. |
+| ESP2 | Phương | Điều khiển quạt và phục vụ web tại chỗ (T07). Bàn giao firmware, hướng dẫn nạp và log cho thấy lệnh được áp dụng, trạng thái được báo lại. |
+| PC | Tâm | Dịch vụ môi giới MQTT chuyển bản tin. Gateway chuẩn hóa số đo, xử lý quy tắc bật/tắt tự động, chuyển lệnh đến ESP2 và đồng bộ hai chiều với ThingsBoard. Bàn giao giao diện tại chỗ (T10), hướng dẫn chạy và log tích hợp. |
+| ThingsBoard | Phương | Bàn giao cấu hình mẫu thiết bị, bảng điều khiển, chuỗi quy tắc (RuleChain), thông báo và minh chứng tự triển khai (N07). Bảng điều khiển hiển thị số đo, điều khiển quạt qua Gateway và nhận trạng thái phản hồi. |
+| Báo cáo và video | Vũ tổng hợp | Mỗi thành viên viết phần mình, giao số liệu và đoạn quay. Vũ biên tập PDF theo mẫu, ghép video và đưa mốc minh chứng vào bảng tự đánh giá. |
 
-Phương và Tâm cùng kiểm thử BLE và kết nối ThingsBoard hai chiều. Vũ và Tâm đối chiếu dữ liệu ESP1 qua MQTT. Để giữ tải việc cho Tâm, T10 chỉ cần hiển thị số đo, trạng thái kết nối và nút điều khiển đèn. Mỗi người tự viết phần kỹ thuật, giao số liệu và quay đoạn demo phần mình. Vũ biên tập báo cáo theo mẫu, ghép video và gắn mốc video vào bảng tự đánh giá. Tỷ lệ đóng góp chốt theo công việc thực tế.
+Luồng số đo đi từ DHT20 → ESP1 → dịch vụ môi giới MQTT → Gateway → ThingsBoard. Lệnh từ ThingsBoard đi qua Gateway và MQTT đến ESP2. Web T07 gọi bộ xử lý quạt ngay trên ESP2. Web T10 gọi Gateway. Các giao diện dùng trạng thái do ESP2 công bố.
 
-## Đầu ra và điều kiện nghiệm thu
+ESP3 do Tâm phụ trách nếu nhóm chọn thêm một điểm đo **nhiệt độ và độ ẩm không khí** qua cảm biến Modbus RS485, rồi chuyển dữ liệu qua BLE đến ESP2. Cần chốt phần cứng và vai trò điểm đo trước khi đưa đường này vào phạm vi nghiệm thu.
 
-| Người phụ trách | Đầu ra cần bàn giao | Điều kiện nghiệm thu |
+## Quy trình cập nhật tài liệu
+
+Soạn và cập nhật tài liệu trong thư mục `BaiNhom`. Vũ duyệt nội dung trước khi đồng bộ bản đã duyệt sang repo. Mọi lần sửa sau áp dụng cùng quy trình.
+
+## Phân công viết báo cáo theo mẫu của giảng viên
+
+Bản Word làm việc của nhóm nằm trong repo tại `present/report/source/BaoCao_BaiTapLon_IoT_Nhom3.docx` và được sao chép trực tiếp từ mẫu **BaoCaoMau_BaiTapLon_IoT.docx**. Thành viên trao đổi trước khi sửa để tránh ghi đè thay đổi của nhau. Cả nhóm viết trực tiếp vào các mục được giao. Vũ ghi người phụ trách bằng bình luận trong từng mục. Khi dán nội dung từ nguồn khác, dùng tùy chọn **Chỉ giữ văn bản** để áp dụng định dạng của mẫu tại vị trí dán. Giữ bố cục, thứ tự chương mục, kiểu tiêu đề, bảng và chú thích của mẫu. Khi mục đã có nội dung và minh chứng, người viết để bình luận **Sẵn sàng duyệt**. Lưu ảnh gốc, số liệu và log trong thư mục minh chứng chung.
+
+| Mục trong mẫu | Người viết chính | Nội dung cần bàn giao |
 |---|---|---|
-| Vũ | Cấu hình ESP1, mẫu MQTT thật, PDF và video | Gateway nhận CO₂ thật kèm mã khu vực. PDF dẫn tới video và các mốc minh chứng. |
-| Phương | Firmware ESP2, hướng dẫn nạp, web T07, log lệnh và cấu hình ThingsBoard | ESP2 nhận đúng TDS qua BLE, thực hiện lệnh và báo trạng thái. ThingsBoard hiển thị số đo, điều khiển được đèn qua Gateway và gửi thông báo thử. |
-| Tâm | Firmware ESP3, ứng dụng Gateway, trang T10, chức năng dự báo và hướng dẫn chạy | Đọc TDS thật qua Modbus, gửi BLE đến ESP2. Gateway đưa dữ liệu lên ThingsBoard và chuyển lệnh về ESP2. Với dữ liệu thử có xu hướng giảm, Gateway công bố thời điểm dự kiến xuống ngưỡng. |
-| Cả nhóm | Bộ số liệu thử, đoạn quay của từng phần và kịch bản demo tích hợp | Truy được đường đi của một số đo và một lệnh. Đo được độ trễ và ghi được kết quả khi mất rồi phục hồi BLE. Mỗi mục tự đánh giá có minh chứng cụ thể. |
+| Trang đầu, thông tin nộp bài, bảng phân công, bảng tự đánh giá | Vũ tổng hợp | Thông tin nhóm, đường dẫn GitHub và video, tỷ lệ đóng góp thực tế, mã công nghệ và minh chứng. Phương và Tâm cung cấp minh chứng phần mình. |
+| Chương 1. Giới thiệu | Vũ | Bài toán nhà nấm, các công trình liên quan, mục tiêu đo được, danh sách tính năng Fxx và phạm vi. |
+| 2.1–2.2 và 2.4–2.6 | Vũ tổng hợp | Sơ đồ kiến trúc, phân rã chức năng, ánh xạ Fxx với Txx/Nxx, công nghệ mới nếu có và bảng phần cứng. Mỗi người xác nhận thành phần mình làm. |
+| 2.3.1 Lớp cảm biến | Vũ | DHT20, đại lượng đo, đơn vị, chu kỳ và căn cứ chọn cảm biến. Tâm bổ sung điểm đo Modbus nếu được triển khai. |
+| 2.3.2–2.3.3 Lớp giao tiếp và Gateway | Tâm | Luồng MQTT, cấu trúc số đo và lệnh, xử lý tại Gateway. Phương đối chiếu đầu nhận ESP2 và ThingsBoard. Bổ sung BLE nếu triển khai ESP3. |
+| 2.3.4 Lớp trí tuệ nhân tạo và 3.5 Trí tuệ nhân tạo | Vũ | Giữ các mục theo mẫu và ghi rõ phạm vi hiện tại dùng điều khiển theo ngưỡng. |
+| 2.3.5 Lớp ứng dụng và nền tảng | Phương | Bảng điều khiển, RuleChain, thông báo và phần thay thế CoreIOT bằng ThingsBoard đã được xác nhận. |
+| 3.1 Phần cứng và sơ đồ kết nối | Vũ tổng hợp | Mỗi người giao sơ đồ nối dây, mã thiết bị và ảnh phần cứng thật của mình. |
+| 3.2 Firmware trên thiết bị | Vũ, Phương và Tâm theo thiết bị | Vũ viết ESP1, Phương viết ESP2 và web T07. Tâm viết ESP3 nếu có. Vũ ghép vào các mục tương ứng của mẫu. |
+| 3.3–3.4 Truyền thông và Gateway | Tâm | Luồng bản tin, xử lý lệnh tự động, giao diện T10, xác nhận lệnh và log tích hợp. Phương cung cấp log từ ESP2. |
+| 3.6–3.7 Nền tảng và tính năng nâng cao | Phương | Cấu hình ThingsBoard, kết quả thông báo, minh chứng N07, LVGL hoặc OTA nếu thực hiện. Giữ các mục theo mẫu và ghi trạng thái thực tế. |
+| Chương 4. Đo đạc và thử nghiệm | Tâm lập bảng số liệu, Vũ biên tập | Vũ giao số đo cảm biến. Phương giao log trạng thái quạt, dashboard và cảnh báo. Tâm tổng hợp độ trễ, thử đúng ngưỡng và đánh giá từ dữ liệu đã đo. |
+| Chương 5. Kết luận và hướng mở rộng | Vũ | Tổng hợp kết quả, hạn chế và hướng phát triển dựa trên minh chứng cả nhóm. |
+| Chương 6. Hướng dẫn sử dụng mã nguồn | Tâm tổng hợp | Vũ cung cấp cấu hình ESP1. Phương cung cấp hướng dẫn nạp ESP2 và nhập cấu hình ThingsBoard. Tâm hướng dẫn chạy Gateway và ghép thành quy trình tái lập. |
+| Tài liệu tham khảo và phụ lục | Vũ tổng hợp | Dẫn theo IEEE, đối chiếu ít nhất năm nguồn được trích trong nội dung, lưu số liệu chi tiết và khai báo phạm vi sử dụng AI theo yêu cầu. |
 
-Các đầu ra dự báo có thể làm với dữ liệu giả lập trước. Đánh giá độ chính xác cần dùng dữ liệu thật và so thời điểm dự báo với thời điểm đo thực tế xuống ngưỡng. Nếu chưa đủ dữ liệu thật, báo cáo ghi rõ mới kiểm thử chức năng.
+Trước khi nộp, Vũ đối chiếu bản Word với mẫu gốc theo từng chương, cập nhật mục lục và kiểm tra bảng, hình, chú thích, số trang và liên kết sau khi xuất PDF. Giữ bố cục và định dạng của mẫu khi nội dung làm thay đổi số trang. Tên PDF theo quy cách `[Mã lớp]_[Mã nhóm]_BaoCaoIoT.pdf`.
 
-## Quy ước giao tiếp đề xuất
+## Danh sách bàn giao theo thành viên
 
-| Đường giao tiếp | Quy ước |
+- **Vũ:** Cấu hình ESP1, sơ đồ đấu nối DHT20, bản tin MQTT thật và số liệu nhiệt độ–độ ẩm. Viết các mục được giao trong Word chung, quay ESP1, chốt PDF và ghép video.
+- **Phương:** Firmware và hướng dẫn nạp ESP2, cấu hình ThingsBoard có thể nhập lại, ảnh hoặc log của web T07, trạng thái quạt, bảng điều khiển và thông báo thực nhận. Viết các mục ESP2 và ThingsBoard trong Word chung, quay phần điều khiển và cảnh báo.
+- **Tâm:** Mã nguồn và hướng dẫn chạy Gateway, giao diện T10, bản tin mẫu, log lệnh và phản hồi, bảng số liệu thử nghiệm. Viết các mục giao tiếp, Gateway, thử nghiệm và hướng dẫn chạy trong Word chung, quay phần tích hợp. Nếu triển khai ESP3, bàn giao thêm firmware, sơ đồ đấu nối và log Modbus/BLE.
+
+Mỗi người lưu tệp minh chứng và clip gốc trong thư mục chung, ghi mã Txx/Nxx và mục báo cáo tương ứng để Vũ đối chiếu khi tổng hợp.
+
+## Quy tắc điều khiển
+
+- Ở chế độ tự động, Gateway bật quạt khi nhiệt độ đạt ngưỡng bật và tắt khi nhiệt độ giảm xuống ngưỡng tắt. Ngưỡng tắt thấp hơn ngưỡng bật để tránh đóng ngắt liên tục.
+- Độ ẩm ra ngoài dải cấu hình kích hoạt cảnh báo trên ThingsBoard. Ở chế độ thủ công, người dùng đặt trạng thái quạt từ giao diện. ESP2 công bố chế độ và trạng thái hiện tại để Gateway chỉ gửi lệnh tự động khi chế độ tự động đang bật.
+- Có thể thử chức năng với ngưỡng bật 27 °C và tắt 25 °C. Đây là giá trị minh họa cho nguyên mẫu. Dải tham khảo cho nuôi trồng được trình bày riêng theo loài và giai đoạn.
+
+## Chuẩn dữ liệu và điều khiển
+
+| Dữ liệu | Quy ước |
 |---|---|
-| ESP1 → Gateway | Giữ bản tin MQTT gốc của Tasmota. Chốt chủ đề và trường dữ liệu bằng bản tin thật. Gateway ánh xạ CO₂ thành `co2_ppm`. |
-| ESP3 → ESP2 | BLE NUS, JSON UTF-8 kết thúc bằng ký tự xuống dòng. ESP2 ghép đủ bản tin rồi mới phân tích. |
-| ESP2 → Gateway | `g3/esp2/telemetry` chuyển tiếp TDS với `source_id: "esp3"` và giữ `seq`. ESP2 công bố trạng thái đèn tại `g3/esp2/status`. |
-| Gateway ↔ ESP2 | Gửi lệnh tại `g3/esp2/command` và nhận kết quả tại `g3/esp2/ack`. |
-| Gateway ↔ ThingsBoard | Dùng các khóa chuẩn hóa cho dữ liệu đo. Ánh xạ lệnh từ dashboard sang `set_light` và chuyển kết quả về đúng yêu cầu ban đầu. Phương và Tâm chốt giao thức, thông tin xác thực và cơ chế gọi lệnh trên máy chủ thực tế. |
-
-Ví dụ bản tin BLE nếu đầu đo trả TDS theo ppm:
+| Bản tin ESP1 | Giữ bản tin gốc từ thiết bị. Vũ và Tâm dùng một bản tin thật để chốt chủ đề MQTT và ánh xạ trường. |
+| Số đo chuẩn hóa | `source_id`, `zone_id`, `temperature_c` theo °C, `humidity_pct` theo %RH, `ts_ms` theo thời gian Unix mili giây, `time_source` và `simulated`. Nếu Gateway gắn thời điểm nhận, dùng `time_source: "gateway_received"`. |
+| Lệnh quạt | Gateway gửi đến `g3/esp2/command`, ESP2 trả kết quả tại `g3/esp2/ack` với cùng `request_id`. Lệnh đặt trạng thái đích và tắt lưu lệnh (MQTT retain). |
+| Trạng thái | ESP2 công bố `fan_on` và `mode` tại `g3/esp2/status`. Khi hết hạn phản hồi, giao diện báo chưa xác nhận. Khi mất mẫu đo, đánh dấu dữ liệu cũ và tạm dừng phát lệnh tự động dựa trên mẫu đó. |
 
 ```json
-{"v":1,"seq":125,"tds_ppm":720}
-```
-
-Ví dụ lệnh và phản hồi trên hai chủ đề MQTT tương ứng:
-
-```json
-{"request_id":"cmd-0042","method":"set_light","params":{"on":true}}
+{"source_id":"esp1","zone_id":"zone_01","temperature_c":27.1,"humidity_pct":88.0,"ts_ms":1793764800000,"time_source":"gateway_received","simulated":true}
 ```
 
 ```json
-{"request_id":"cmd-0042","status":"applied","light_on":true}
+{"request_id":"cmd-0042","method":"set_fan","params":{"on":true}}
 ```
-
-Lệnh đặt trạng thái đích và không bật lưu lệnh (MQTT retain). `applied` xác nhận firmware đã áp dụng đầu ra. Giao diện báo chưa xác nhận nếu hết thời gian chờ và báo dữ liệu cũ khi mất mẫu mới, thay vì gán giá trị 0. Nhóm chốt chu kỳ lấy mẫu, thời hạn chờ và mã lỗi sau khi chạy thử.
-
-## Chuẩn dữ liệu tại Gateway
-
-Tâm chuẩn hóa dữ liệu tại Gateway. Phương dùng cùng tên trường và đơn vị trên ThingsBoard. Vũ cung cấp bản tin Tasmota thật để đối chiếu phần ánh xạ.
-
-| Trường | Quy ước |
-|---|---|
-| `source_id`, `zone_id` | Nguồn phát sinh dữ liệu và mã khu vực đo CO₂. Dữ liệu TDS vẫn mang nguồn `esp3` khi chuyển tiếp. |
-| `ts_ms`, `time_source` | Thời gian Unix theo mili giây, ưu tiên thời điểm đo nếu đáng tin cậy. Nếu dùng thời điểm Gateway nhận, ghi `time_source: "gateway_received"`. |
-| `co2_ppm`, `temperature_c`, `humidity_pct` | CO₂ theo ppm, nhiệt độ theo °C và độ ẩm tương đối theo %. |
-| `tds_ppm` | TDS theo ppm sau khi xác nhận đơn vị và hệ số quy đổi từ đầu đo. |
-| `simulated` | `true` với dữ liệu giả lập, `false` với dữ liệu đo thật. Tách hai nguồn khi đánh giá dự báo. |
-| `light_on` | Giá trị đúng/sai phản ánh trạng thái đầu ra do ESP2 công bố. |
-| `forecast_status`, `predicted_crossing_at_ms` | Trạng thái dự báo và thời điểm Unix theo mili giây. Chỉ có thời điểm khi dự báo hợp lệ. |
-
-Ví dụ CO₂ giả lập đã chuẩn hóa:
 
 ```json
-{"source_id":"esp1","zone_id":"zone_01","ts_ms":1793764800000,"time_source":"gateway_received","co2_ppm":700,"simulated":true}
+{"request_id":"cmd-0042","status":"applied","fan_on":true}
 ```
 
-## Dự báo CO₂ theo khu vực
+`applied` xác nhận firmware đã áp dụng trạng thái đầu ra. Video nghiệm thu cho thấy quạt thực sự đổi trạng thái. Phương và Tâm chốt khóa ThingsBoard, giao thức kết nối và cách ánh xạ lệnh vào cùng cấu trúc trên.
 
-Gateway lưu `zone_id`, thời điểm đo và `co2_ppm`. Mô hình khớp đường hồi quy trên các mẫu gần đây của từng khu vực. Khi nồng độ đang trên ngưỡng và độ dốc âm, Gateway tính thời điểm dự kiến xuống ngưỡng và gửi kết quả lên ThingsBoard. Nếu thiếu mẫu, dữ liệu đã cũ hoặc xu hướng không giảm, trả trạng thái không có dự báo. Nếu số đo thực tế đã dưới ngưỡng, xử lý bằng quy tắc cảnh báo theo số đo hiện tại.
-
-Đầu ra tối thiểu gồm `zone_id`, `threshold_ppm`, `forecast_status` và `predicted_crossing_at_ms` khi có dự báo. Số mẫu tối thiểu, cửa sổ đo và khoảng thời gian báo trước sẽ được chốt khi có dữ liệu. Cảnh báo sớm từ dự báo và thông báo vượt ngưỡng từ số đo thật cần được phân biệt trên giao diện. Dự báo là chức năng ứng dụng. Việc tự đánh giá T09 cần đối chiếu tiêu chí riêng và minh chứng thực tế.
-
-## Thang điểm, nghiệm thu và video
-
-| Ưu tiên | Hạng mục | Minh chứng |
-|---|---|---|
-| Đường chính | T02 (1), T03 (1,5), T07 (1), T08 (1), T10 (1), T11 (1), T12 (1), T13 (0,5) | **8 điểm dự kiến** nếu hoàn thành đủ. Quay Modbus và BLE riêng, ba đường điều khiển đèn, dashboard và thông báo thực nhận. |
-| Dự phòng | T01 (0,5) | Đấu nối I²C, cấu hình Tasmota và dữ liệu thật. |
-| Bổ sung | T14 (2) | Chỉ làm khi đã chạy ổn đường chính. Cần quy trình gán gói, thiết bị cập nhật và phiên bản trước/sau. |
-| Nâng cao | N07 hoặc N03 | Tối đa 1 điểm cộng. Minh chứng triển khai ThingsBoard trên máy local và nhận dữ liệu thật, hoặc màn hình LVGL hoạt động. |
-| Báo cáo | Tối đa 2 điểm | PDF theo mẫu, bảng phân công, bảng tự đánh giá, ánh xạ tính năng Fxx với Txx/Nxx, đo đạc, hướng dẫn chạy và tối thiểu 5 tài liệu tham khảo. |
-
-Điểm công nghệ áp trần 8. Điểm bài tập lớn tối đa 10. Chỉ tự đánh giá các mục đã thực hiện và có minh chứng.
-
-Video dự kiến 5–10 phút. Quay lần lượt đọc cảm biến thật, giám sát và điều khiển, cảnh báo và minh chứng N07. Đo lặp lại theo các mốc bên dưới. Ghi số lần đo, điều kiện thử, trung bình, nhỏ nhất và lớn nhất cho các phép đo độ trễ. Thử thêm mất BLE rồi kết nối lại để kiểm tra trạng thái dữ liệu cũ và phục hồi.
-
-## Chỉ số nghiệm thu
+## Nghiệm thu và thang điểm
 
 | Chỉ số | Cách đo |
 |---|---|
-| Độ trễ Gateway → ThingsBoard | Từ lúc Gateway nhận bản tin đến khi thấy đúng mẫu trên bảng điều khiển. Đối chiếu mã mẫu hoặc dấu thời gian. Phép đo này bắt đầu tại Gateway. |
-| Độ trễ lệnh MQTT | Từ lúc Gateway gửi lệnh đến lúc nhận `applied` với cùng `request_id`. Ghi riêng số lần hết thời gian chờ. |
-| Tỷ lệ nhận BLE | Số bản tin hợp lệ, không trùng mà ESP2 nhận chia cho số bản tin ESP3 gửi trong cùng lượt thử. Đối chiếu `seq`. |
-| Sai số dự báo | Độ lệch tuyệt đối giữa thời điểm dự báo và thời điểm mẫu thật đầu tiên xác nhận CO₂ xuống dưới ngưỡng trong cùng khu vực. Ghi chu kỳ lấy mẫu và thời điểm phát dự báo. |
+| Đúng ngưỡng | Thử tăng qua ngưỡng bật, giữ giữa hai ngưỡng, giảm qua ngưỡng tắt. Ghi số đo và trạng thái quạt theo từng bước. |
+| Độ trễ dữ liệu | Từ lúc Gateway nhận bản tin đến lúc mẫu tương ứng hiển thị trên ThingsBoard. |
+| Độ trễ điều khiển | Từ lúc Gateway gửi lệnh MQTT đến lúc nhận `applied` với cùng `request_id`. Ghi riêng các lần hết hạn. |
+| Phản ứng môi trường | Ghi nhiệt độ và độ ẩm trước và sau khi quạt chạy, kèm điều kiện thử. |
+| BLE nếu triển khai ESP3 | So số bản tin hợp lệ, không trùng tại ESP2 với số bản tin ESP3 gửi trong cùng lượt thử. |
 
-## Tài liệu đối chiếu
+Các phép đo độ trễ cần lặp lại và báo cáo số lần thử, trung bình, nhỏ nhất và lớn nhất. Video 5–10 phút nên thể hiện số đo thật, một chu kỳ bật/tắt tự động, thao tác thủ công, thông báo thực nhận và minh chứng triển khai ThingsBoard.
+
+Theo thang điểm trong thông báo, T07/T08/T10/T11/T12/T13 có tổng dự kiến **5,5 điểm** nếu hoàn thành và có minh chứng. T01 thêm 0,5 điểm khi đọc I²C trên Tasmota. T02/T03 thêm tối đa 2,5 điểm nếu hiện thực đường Modbus/BLE. T14 là phương án bổ sung nếu triển khai OTA có minh chứng. Công nghệ áp trần 8 điểm, báo cáo tối đa 2 điểm, N07 và N03 cùng thuộc phần điểm cộng tối đa 1 điểm. Tổng điểm bài tập lớn tối đa 10.
+
+## Nguồn tham khảo cho báo cáo
+
+| Bài và năm xuất bản | Tạp chí và xếp hạng | DOI hoặc nguồn | Dùng cho phần nào |
+|---|---|---|---|
+| Evaluation of Different Pasteurization and Sterilization Methods for Oyster Mushroom Substrates (2024) | Journal of Microbiology, Biotechnology and Food Sciences. [SJR 2025 Q3](https://journalsbase.com/journals/journal-of-microbiology-biotechnology-and-food-sciences). | [10.55251/jmbfs.10428](https://doi.org/10.55251/jmbfs.10428) | Bối cảnh nuôi trồng. Bảng 3 dẫn lại điều kiện theo giai đoạn từ Stamets. Nghiên cứu chính đánh giá xử lý giá thể. |
+| Design and Evaluation of a Compact IoT-Enabled Microfarm for Decentralized Urban Agriculture Applied to the Cultivation of Pleurotus ostreatus (2025) | Sustainability. [SJR 2025 Q1 ở Geography, Planning and Development, Q2 ở Computer Networks and Communications](https://researchcloud.net/journal/2071-1050). | [10.3390/su172210332](https://doi.org/10.3390/su172210332) | Công trình liên quan, cách đo nhiệt độ và độ ẩm trong buồng trồng và phương pháp đánh giá. |
+| Design and Implementation of a Cost-Aware and Smart Oyster Mushroom Cultivation System (2024) | Smart Agricultural Technology. [SJR 2025 Q1 ở Agricultural and Biological Sciences (miscellaneous)](https://www.resurchify.com/impact/details/21101111783). | [10.1016/j.atech.2024.100439](https://doi.org/10.1016/j.atech.2024.100439) | Công trình liên quan và so sánh phạm vi đo lường. |
+| The Development of an Automatic Environment Control System in Greenhouses for Phoenix Oyster Mushrooms Using the Internet of Things (2026, số 8(1)) | Journal of Applied Informatics and Technology. [Có trong TCI](https://ph01.tci-thaijo.org/index.php/jait/journal-insight). [Danh sách của trường ghi Group 1](https://it.msu.ac.th/wp-content/uploads/2023/10/Collaborative-journals-AJCC-AUCC-2024-edited-Oct.5-1.pdf). Kỳ xếp hạng 2026 và quartile SJR chưa xác minh. | [10.14456/jait.2026.2](https://doi.org/10.14456/jait.2026.2) | Tham khảo thiết kế quạt và bộ phun ẩm riêng cho nhà nấm bào ngư Phoenix. |
+| DHT20 Data Sheet (2021) | Tài liệu kỹ thuật ASAIR, không áp dụng xếp hạng tạp chí. | [PDF của hãng](https://www.aosong.com/userfiles/files/media/Data%20Sheet%20DHT20%20%20A1.pdf), không có DOI. | Giao tiếp I²C, điều kiện đo và sai số công bố của cảm biến. |
+
+Các bản PDF đã tải được lưu trong [thư mục tài liệu tham khảo của nhóm trên Google Drive](https://drive.google.com/drive/folders/1QgDkBjaxtsZ0zJZVQ1gTQvduthe19O6d?usp=sharing).
+
+Dẫn tối thiểu năm nguồn phù hợp trong nội dung theo kiểu IEEE. Chọn dải nhiệt–ẩm theo đúng loài và giai đoạn. Đánh giá nguyên mẫu bằng số liệu do nhóm đo. Có thể bổ sung [đặc tả MQTT 3.1.1 của OASIS](https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) nếu đây là phiên bản nhóm triển khai.
 
 - [Thông báo bài tập lớn](ThongBao_BaiTapLon_IoT.docx)
 - [Mẫu báo cáo bài tập lớn](BaoCaoMau_BaiTapLon_IoT.docx)
