@@ -7,9 +7,9 @@ Hệ thống giám sát nhiệt độ và độ ẩm không khí trong nhà nấ
 | Thành phần | Phụ trách | Đầu ra và điều kiện nghiệm thu |
 |---|---|---|
 | ESP1 | Vũ | DHT20 đo nhiệt độ và độ ẩm qua I²C, gửi bản tin MQTT thật. Bàn giao cấu hình, mẫu bản tin và minh chứng đọc cảm biến. T01 cần xác nhận đọc được trên Tasmota. |
-| ESP3 | Phương | Đọc nhiệt độ và độ ẩm qua Modbus RS485 và gửi qua BLE. Bàn giao firmware, sơ đồ đấu nối và log ESP2 nhận đúng dữ liệu. |
+| ESP3 | Tâm | Đọc nhiệt độ và độ ẩm qua Modbus RS485 và gửi qua BLE. Bàn giao firmware, sơ đồ đấu nối và log ESP2 nhận đúng dữ liệu. |
 | ESP2 | Phương | Nhận dữ liệu ESP3 qua BLE, chuyển tiếp qua MQTT, điều khiển quạt và phục vụ web tại chỗ (T07). Bàn giao firmware, hướng dẫn nạp và log cho thấy lệnh được áp dụng, trạng thái được báo lại. |
-| PC | Tâm | Dịch vụ môi giới MQTT chuyển bản tin. Gateway chuẩn hóa số đo, xử lý quy tắc bật/tắt tự động, chuyển lệnh đến ESP2 và đồng bộ hai chiều với ThingsBoard. Bàn giao giao diện tại chỗ (T10), hướng dẫn chạy và log tích hợp. |
+| PC | Phương | Dịch vụ môi giới MQTT chuyển bản tin. Gateway chuẩn hóa số đo, xử lý quy tắc bật/tắt tự động, chuyển lệnh đến ESP2 và đồng bộ hai chiều với ThingsBoard. Bàn giao giao diện tại chỗ (T10), hướng dẫn chạy và log tích hợp. |
 | ThingsBoard | Tâm | Bàn giao cấu hình mẫu thiết bị, bảng điều khiển, chuỗi quy tắc (RuleChain), thông báo và minh chứng tự triển khai (N07). Bảng điều khiển hiển thị số đo, điều khiển quạt qua Gateway và nhận trạng thái phản hồi. |
 | Báo cáo và video | Vũ tổng hợp | Mỗi thành viên viết phần mình, giao số liệu và đoạn quay. Vũ biên tập PDF theo mẫu, ghép video và đưa mốc minh chứng vào bảng tự đánh giá. |
 
