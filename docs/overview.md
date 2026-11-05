@@ -7,10 +7,10 @@ Hệ thống giám sát nhiệt độ và độ ẩm không khí trong nhà nấ
 | Thành phần | Phụ trách | Đầu ra và điều kiện nghiệm thu |
 |---|---|---|
 | ESP1 | Vũ | DHT20 đo nhiệt độ và độ ẩm qua I²C, gửi bản tin MQTT thật. Bàn giao cấu hình, mẫu bản tin và minh chứng đọc cảm biến. T01 cần xác nhận đọc được trên Tasmota. |
-| ESP3 | Tâm | Đọc nhiệt độ và độ ẩm qua Modbus RS485 và gửi qua BLE. Bàn giao firmware, sơ đồ đấu nối và log ESP2 nhận đúng dữ liệu. |
+| ESP3 | Phương | Đọc nhiệt độ và độ ẩm qua Modbus RS485 và gửi qua BLE. Bàn giao firmware, sơ đồ đấu nối và log ESP2 nhận đúng dữ liệu. |
 | ESP2 | Phương | Nhận dữ liệu ESP3 qua BLE, chuyển tiếp qua MQTT, điều khiển quạt và phục vụ web tại chỗ (T07). Bàn giao firmware, hướng dẫn nạp và log cho thấy lệnh được áp dụng, trạng thái được báo lại. |
 | PC | Tâm | Dịch vụ môi giới MQTT chuyển bản tin. Gateway chuẩn hóa số đo, xử lý quy tắc bật/tắt tự động, chuyển lệnh đến ESP2 và đồng bộ hai chiều với ThingsBoard. Bàn giao giao diện tại chỗ (T10), hướng dẫn chạy và log tích hợp. |
-| ThingsBoard | Phương | Bàn giao cấu hình mẫu thiết bị, bảng điều khiển, chuỗi quy tắc (RuleChain), thông báo và minh chứng tự triển khai (N07). Bảng điều khiển hiển thị số đo, điều khiển quạt qua Gateway và nhận trạng thái phản hồi. |
+| ThingsBoard | Tâm | Bàn giao cấu hình mẫu thiết bị, bảng điều khiển, chuỗi quy tắc (RuleChain), thông báo và minh chứng tự triển khai (N07). Bảng điều khiển hiển thị số đo, điều khiển quạt qua Gateway và nhận trạng thái phản hồi. |
 | Báo cáo và video | Vũ tổng hợp | Mỗi thành viên viết phần mình, giao số liệu và đoạn quay. Vũ biên tập PDF theo mẫu, ghép video và đưa mốc minh chứng vào bảng tự đánh giá. |
 
 ### Sơ đồ thành phần
@@ -75,9 +75,39 @@ Mỗi người lưu tệp minh chứng và clip gốc trong thư mục chung, gh
 
 ## Quy tắc điều khiển
 
-- Ở chế độ tự động, Gateway bật quạt khi nhiệt độ đạt ngưỡng bật và tắt khi nhiệt độ giảm xuống ngưỡng tắt. Ngưỡng tắt thấp hơn ngưỡng bật để tránh đóng ngắt liên tục.
-- Độ ẩm ra ngoài dải cấu hình kích hoạt cảnh báo trên ThingsBoard. Ở chế độ thủ công, người dùng đặt trạng thái quạt từ giao diện. ESP2 công bố chế độ và trạng thái hiện tại để Gateway chỉ gửi lệnh tự động khi chế độ tự động đang bật.
-- Có thể thử chức năng với ngưỡng bật 27 °C và tắt 25 °C. Đây là giá trị minh họa cho nguyên mẫu. Dải tham khảo cho nuôi trồng được trình bày riêng theo loài và giai đoạn.
+### Điều khiển tự động bằng RuleChain (CoreIOT / ThingsBoard)
+
+Toàn bộ logic tự động được cấu hình trên **RuleChain** của CoreIOT (ThingsBoard). Nhiệt độ không khí lấy từ **ESP1** (DHT20) làm đầu vào cho quy tắc bật/tắt làm mát. Lệnh on/off làm mát được gửi tới **ESP2** để điều khiển thiết bị qua **1 chân I/O**.
+
+- **Cơ chế chống đóng ngắt liên tục (Hysteresis):** Thiết lập dải trễ 3°C giữa ngưỡng bật (> 29°C) và ngưỡng tắt (< 26°C). Khi nhiệt độ vượt 29°C, làm mát bật và duy trì hoạt động đến khi nhiệt độ hạ hẳn dưới 26°C mới ngắt; ngược lại khi đang tắt, quạt chỉ bật lại khi nhiệt độ vượt quá 29°C, tránh việc relay/thiết bị đóng ngắt liên tục quanh một điểm đặt.
+
+| Điều kiện | Trạng thái trước đó | Hành động | Thiết bị thực thi |
+|---|---|---|---|
+| Nhiệt độ > 29°C | Đang tắt hoặc chưa bật | Bật làm mát | ESP2 (1 chân I/O) |
+| 26°C ≤ Nhiệt độ ≤ 29°C | Đang chạy hoặc đang tắt | Giữ nguyên trạng thái hiện tại (dải trễ Hysteresis) | ESP2 |
+| Nhiệt độ < 26°C | Đang chạy | Tắt làm mát | ESP2 (1 chân I/O) |
+
+- Ở chế độ thủ công, người dùng đặt trạng thái quạt/làm mát từ giao diện. ESP2 công bố chế độ và trạng thái hiện tại để RuleChain chỉ gửi lệnh tự động khi chế độ tự động đang bật.
+
+### Cảnh báo bằng RuleChain
+
+Các ngưỡng cảnh báo được cấu hình trên RuleChain của CoreIOT. Để tránh việc phát sinh và xóa cảnh báo liên tục (alarm flapping / chattering) khi số đo dao động sát ngưỡng, RuleChain áp dụng **ngưỡng trễ Hysteresis** cho điều kiện tạo (Create Alarm) và xóa cảnh báo (Clear Alarm).
+
+| Thông số | Nguồn | Bình thường (ví dụ) | Kích hoạt cảnh báo thấp | Xóa cảnh báo thấp (Clear) | Kích hoạt cảnh báo cao | Xóa cảnh báo cao (Clear) | Dải trễ (Hysteresis) |
+|---|---|---|---|---|---|---|---|
+| Nhiệt độ không khí | ESP1 | 26–29°C | < 24°C | ≥ 25°C | > 30°C | ≤ 29°C | 1°C |
+| Độ ẩm không khí (RH) | ESP1 | 85–90% | < 80% | ≥ 82% | > 95% | ≤ 93% | 2% RH |
+| Nhiệt độ giá thể | ESP3 | Tùy giai đoạn | < 20°C | ≥ 21°C | > 32°C | ≤ 31°C | 1°C |
+
+- **Nguyên lý hoạt động:** Cảnh báo chỉ được kích hoạt khi vượt qua ngưỡng báo động và chỉ tự động giải phóng (Clear Alarm) khi giá trị đã quay trở lại vùng an toàn vượt qua bước trễ Hysteresis tương ứng.
+
+### Điều khiển đèn
+
+Đèn chỉ hỗ trợ điều khiển bật/tắt (on/off) thông thường trên **ESP2**, không áp dụng quy tắc tự động.
+
+### OTA
+
+Chức năng cập nhật firmware qua mạng (OTA) được triển khai trên **ESP2**.
 
 ## Chuẩn dữ liệu và điều khiển
 
