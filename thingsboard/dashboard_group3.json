@@ -1,0 +1,223 @@
+{
+  "title": "IoT System Dashboard \u2014 Group 3",
+  "image": null,
+  "mobileHide": false,
+  "mobileOrder": null,
+  "configuration": {
+    "description": "Live Monitoring & Control for ESP1, ESP2 and PC Gateway",
+    "widgets": {
+      "2b30c2d3-7685-4ad3-bd25-fd0587ffd8bd": {
+        "isSystemType": true,
+        "bundleAlias": "cards",
+        "typeAlias": "timeseries_table",
+        "type": "timeseries",
+        "title": "ESP1 \u2014 Air Quality (CO2)",
+        "sizeX": 12,
+        "sizeY": 5,
+        "row": 0,
+        "col": 0,
+        "config": {
+          "datasources": [
+            {
+              "type": "entity",
+              "entityAliasId": "895261cc-8fff-4aec-9bd0-e4140c1cf108",
+              "dataKeys": [
+                {
+                  "name": "co2_ppm",
+                  "type": "timeseries",
+                  "label": "CO2 (ppm)",
+                  "color": "#2563eb",
+                  "settings": {},
+                  "_hash": 0.123
+                }
+              ]
+            }
+          ],
+          "showTitle": true,
+          "backgroundColor": "#ffffff",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "16px",
+          "settings": {
+            "showTimestamp": true,
+            "displayPagination": true,
+            "defaultPageSize": 5
+          },
+          "title": "ESP1 \u2014 Air Quality (CO2)"
+        }
+      },
+      "41e752a4-b381-4726-96e9-d00fcf30d18a": {
+        "isSystemType": true,
+        "bundleAlias": "cards",
+        "typeAlias": "timeseries_table",
+        "type": "timeseries",
+        "title": "ESP2 \u2014 Water & Light (TDS / Light Status)",
+        "sizeX": 12,
+        "sizeY": 5,
+        "row": 0,
+        "col": 12,
+        "config": {
+          "datasources": [
+            {
+              "type": "entity",
+              "entityAliasId": "886e535c-14d3-40ca-99a5-e6e455fbeff6",
+              "dataKeys": [
+                {
+                  "name": "tds_ppm",
+                  "type": "timeseries",
+                  "label": "TDS (ppm)",
+                  "color": "#16a34a",
+                  "settings": {},
+                  "_hash": 0.456
+                },
+                {
+                  "name": "light_on",
+                  "type": "timeseries",
+                  "label": "Light State",
+                  "color": "#ea580c",
+                  "settings": {},
+                  "_hash": 0.789
+                }
+              ]
+            }
+          ],
+          "showTitle": true,
+          "backgroundColor": "#ffffff",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "16px",
+          "settings": {
+            "showTimestamp": true,
+            "displayPagination": true,
+            "defaultPageSize": 5
+          },
+          "title": "ESP2 \u2014 Water & Light (TDS / Light Status)"
+        }
+      },
+      "06e9a009-0a5f-4369-a49a-26c12983a24c": {
+        "isSystemType": true,
+        "bundleAlias": "control_widgets",
+        "typeAlias": "round_switch",
+        "type": "rpc",
+        "title": "Control ESP2 Light",
+        "sizeX": 8,
+        "sizeY": 5,
+        "row": 5,
+        "col": 0,
+        "config": {
+          "targetDevice": {
+            "type": "entity",
+            "entityAliasId": "886e535c-14d3-40ca-99a5-e6e455fbeff6"
+          },
+          "showTitle": true,
+          "backgroundColor": "#ffffff",
+          "padding": "16px",
+          "settings": {
+            "title": "ESP2 Light Switch",
+            "initialValue": false,
+            "getValueMethod": "get_light",
+            "setValueMethod": "set_light",
+            "valueKey": "light_on",
+            "requestTimeout": 5000,
+            "retrieveValueMethod": "timeseries",
+            "parseValueFunction": "return (data === true || data === 'true' || data === 1 || data === '1');",
+            "convertValueFunction": "return value;"
+          },
+          "title": "Control ESP2 Light"
+        }
+      }
+    },
+    "states": {
+      "default": {
+        "name": "Home",
+        "root": true,
+        "layouts": {
+          "main": {
+            "widgets": {
+              "2b30c2d3-7685-4ad3-bd25-fd0587ffd8bd": {
+                "sizeX": 12,
+                "sizeY": 5,
+                "row": 0,
+                "col": 0
+              },
+              "41e752a4-b381-4726-96e9-d00fcf30d18a": {
+                "sizeX": 12,
+                "sizeY": 5,
+                "row": 0,
+                "col": 12
+              },
+              "06e9a009-0a5f-4369-a49a-26c12983a24c": {
+                "sizeX": 8,
+                "sizeY": 5,
+                "row": 5,
+                "col": 0
+              }
+            },
+            "gridSettings": {
+              "backgroundColor": "#f4f6f8",
+              "columns": 24,
+              "margin": 10,
+              "outerMargin": true
+            }
+          }
+        }
+      }
+    },
+    "entityAliases": {
+      "895261cc-8fff-4aec-9bd0-e4140c1cf108": {
+        "id": "895261cc-8fff-4aec-9bd0-e4140c1cf108",
+        "alias": "ESP1 Device",
+        "filter": {
+          "type": "singleEntity",
+          "singleEntity": {
+            "entityType": "DEVICE",
+            "id": "4fb8f7f0-d7e9-11f1-9301-8d833790fa1a"
+          }
+        }
+      },
+      "886e535c-14d3-40ca-99a5-e6e455fbeff6": {
+        "id": "886e535c-14d3-40ca-99a5-e6e455fbeff6",
+        "alias": "ESP2 Device",
+        "filter": {
+          "type": "singleEntity",
+          "singleEntity": {
+            "entityType": "DEVICE",
+            "id": "cf2cd650-d7e9-11f1-9301-8d833790fa1a"
+          }
+        }
+      }
+    },
+    "timewindow": {
+      "displayValue": "",
+      "hideInterval": false,
+      "hideAggregation": false,
+      "hideAggInterval": false,
+      "selectedTab": 0,
+      "realtime": {
+        "realtimeType": 0,
+        "interval": 1000,
+        "timewindowMs": 60000
+      },
+      "history": {
+        "historyType": 0,
+        "timewindowMs": 60000
+      },
+      "aggregation": {
+        "type": "NONE",
+        "limit": 200
+      }
+    }
+  },
+  "name": "IoT System Dashboard \u2014 Group 3",
+  "resources": null,
+  "id": {
+    "entityType": "DASHBOARD",
+    "id": "ce9732c0-d7f9-11f1-9301-8d833790fa1a"
+  },
+  "createdTime": 1793760333804,
+  "tenantId": {
+    "entityType": "TENANT",
+    "id": "48cd26e0-d678-11f1-9301-8d833790fa1a"
+  },
+  "assignedCustomers": null,
+  "version": 1,
+  "externalId": null
+}

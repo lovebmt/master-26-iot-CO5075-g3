@@ -6,7 +6,7 @@
 ESP1 — CO₂ node
   CO₂ sensor over I²C (T01; use Tasmota-compatible setup)
   Wi-Fi + MQTT → local MQTT broker / PC Gateway
-  Custom webserver (T07; shared rubric item with ESP2)
+  Custom webserver (T07; shared rubric item with ESP2) 
 
 ESP2 — BLE central / display / light node
   BLE central: receives TDS data over NUS from ESP3
@@ -78,5 +78,6 @@ Rubric scores are earned only for completed features with report/demo evidence. 
 - Authentication endpoint: `POST /api/auth/login`
 - Development login: `master.iot@gmail.com` / `master.iot`
 - These credentials are for the development instance only; do not reuse them for other services.
+- mqtt port: 10000 (--tls-use-os-certs , insecure)
 
 The development instance is useful for integration work. Confirm the instructor accepts it for grading; otherwise repeat the final CoreIOT evidence against the required course server.

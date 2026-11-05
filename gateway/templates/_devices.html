@@ -1,0 +1,45 @@
+<table>
+  <thead>
+    <tr><th>Device</th><th>Measurements</th><th>Last seen</th><th>Status</th><th>Control</th></tr>
+  </thead>
+  <tbody>
+  {% for d in devices %}
+    <tr>
+      <td>{{ d.local_id }} <small>({{ d.tb_name }})</small></td>
+      <td>
+        {% if d.values %}
+          {% for k in d.values %}{{ k }}: {{ d.values[k] }}  {% endfor %}
+        {% else %}—{% endif %}
+      </td>
+      <td>{% if d.last_seen_ms %}{{ d.last_seen_ago_s }}s ago{% else %}never{% endif %}</td>
+      <td class="{% if d.stale %}stale{% else %}ok{% endif %}">
+        {% if d.stale %}stale{% else %}live{% endif %}
+      </td>
+      <td>
+        {% if d.local_id == "esp2" %}
+        <form class="light-ctrl" hx-post="/devices/esp2/light" hx-target="#dashboard-content" hx-swap="innerHTML">
+          <input type="hidden" name="value" value="on">
+          <button type="submit">On</button>
+        </form>
+        <form class="light-ctrl" hx-post="/devices/esp2/light" hx-target="#dashboard-content" hx-swap="innerHTML">
+          <input type="hidden" name="value" value="off">
+          <button type="submit">Off</button>
+        </form>
+        {% else %}—{% endif %}
+        <a href="/devices/{{ d.local_id }}/chart" class="chart-btn">See Chart</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="queue-panel">
+  <h3>Outbox Queue (Offline Buffer)</h3>
+  <p>Pending messages: <strong>{{ queue_count }}</strong></p>
+  <form hx-post="/queue/clean" hx-target="#dashboard-content" hx-swap="innerHTML">
+    <label>From: <input type="date" name="from_date" required></label>
+    <label>To: <input type="date" name="to_date" required></label>
+    <button type="submit" onclick="return confirm('Clean queued data in this date range?')">Clean Queue</button>
+  </form>
+</div>
+
