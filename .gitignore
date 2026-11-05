@@ -1,3 +1,4 @@
+.DS_Store
 firmware/esp2/.embuild
 firmware/esp2/target/
 firmware/esp2/.pio/
