@@ -97,6 +97,7 @@ flowchart TD
 ├── docs/                      # Tài liệu kiến trúc, đặc tả phần cứng và phân công
 │   ├── overview.md            # Tổng quan đề tài, quy tắc điều khiển và cơ chế OTA
 │   ├── hardware-architecture.md# Đặc tả kiến trúc phần cứng, chân kết nối và ma trận Txx
+│   ├── self-hosted-thingsboard-tailscale.md # Hướng dẫn chi tiết tự dựng ThingsBoard & Tailscale (N07)
 │   └── README.md
 ├── firmware/                  # Mã nguồn firmware các vi điều khiển
 │   ├── esp1/                  # Cấu hình Tasmota và script Berry đọc I²C DHT20

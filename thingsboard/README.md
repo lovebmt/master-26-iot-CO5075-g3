@@ -33,9 +33,12 @@ Dashboard `IoT System Dashboard — Group 3` tích hợp widget điều khiển 
 4. Gateway kéo file từ URL CoreIOT về lưu đệm cục bộ tại `gateway/firmware/esp2.bin` và cung cấp cho ESP2 trong mạng LAN nội bộ (`http://<IP_GATEWAY>:8080/firmware/esp2.bin`).
 
 ## 3. Cấu hình Nginx & Minikube trên máy chủ CoreIOT
+> [!TIP]
+> Hướng dẫn triển khai chi tiết từng bước từ cài đặt Tailscale, cấu hình Minikube Kubernetes `tb2`, Ingress Nginx, xử lý upload OTA firmware đến chứng chỉ SSL/TLS được tài liệu hóa đầy đủ tại: **[docs/self-hosted-thingsboard-tailscale.md](../docs/self-hosted-thingsboard-tailscale.md)** (Minh chứng tiêu chí N07).
+
 * Máy chủ: `fuvi-server.tailc75d93.ts.net` (`justin@192.168.1.32`).
 * Cụm: Minikube (`profile: tb2`), Ingress: `tb-ingress` (namespace `thingboard-dev`).
-* Nginx Reverse Proxy Container: `mega-nginx-minikube-tb2` ánh xạ cổng `28880 -> 80`.
+* Nginx Reverse Proxy Container: `mega-nginx-minikube-tb2` ánh xạ cổng `28880 -> 80` (HTTP/HTTPS) và `10000 -> 1883` (ThingsBoard MQTT Gateway).
 * Đã cấu hình `client_max_body_size 100M;` trong `/home/justin/dienmega/thingsboard_2/nginx/nginx.conf` và Kubernetes Ingress annotation `nginx.ingress.kubernetes.io/proxy-body-size: "100m"` để giải quyết dứt điểm lỗi `HTTP 413 Request Entity Too Large` khi upload các bản build firmware lớn (> 1MB).
 
 ## 4. Cấu hình Chuỗi Quy Tắc Cảnh Báo Ngưỡng Hysteresis (RuleChain T12 & T13)
