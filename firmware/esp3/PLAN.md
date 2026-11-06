@@ -3,10 +3,10 @@
 Chuyển đổi từ `firmware/esp3_r` (Rust ESP-IDF) sang C/C++ Arduino framework trên PlatformIO.
 
 ## 1. Mục tiêu & Trách nhiệm
-* Đóng vai trò **BLE NUS Peripheral** quảng bá tên `ESP3-TDS`.
-* Đo/giả lập chỉ số TDS (500–570 ppm, chu kỳ 40s, bước 10 ppm mỗi 5s) hoặc đọc qua RS485 Modbus RTU.
-* Gửi dữ liệu định kỳ tới ESP2 qua BLE Notify định dạng JSON: `{"tds_ppm": <val>}`.
-* Hiển thị chỉ số đo và trạng thái kết nối BLE lên màn hình TFT LCD ILI9341.
+* Đóng vai trò **BLE NUS Peripheral** quảng bá tên `ESP3-PT100` (hoặc `ESP3-TDS`).
+* Đo chỉ số nhiệt độ đất PT100 qua RS485 Modbus RTU.
+* Gửi dữ liệu định kỳ tới ESP2 qua BLE Notify định dạng JSON: `{"soil_temp": <val>}`.
+* Hiển thị chỉ số đo và trạng thái kết nối BLE lên màn hình TFT LCD ILI9341 (`Soil: XX.X C (PT100)`).
 
 ## 2. Phần cứng & Sơ đồ nối chân (ESP32-2432S028R / ESP32 Dev)
 * **Màn hình ILI9341 (SPI):**
@@ -16,14 +16,14 @@ Chuyển đổi từ `firmware/esp3_r` (Rust ESP-IDF) sang C/C++ Arduino framewo
   * TFT_CS: GPIO 15
   * TFT_DC: GPIO 2
   * TFT_BL (Đèn nền): GPIO 21 (Mức HIGH = Sáng)
-* **RS485 Modbus RTU (Dự phòng cảm biến TDS thật):**
+* **RS485 Modbus RTU (Cảm biến nhiệt độ đất PT100):**
   * UART2 (RX2: GPIO 16, TX2: GPIO 17, DE/RE: GPIO 4)
 
 ## 3. Thư viện sử dụng (PlatformIO)
 * `h2zero/NimBLE-Arduino @ ^1.4.2`: Bluetooth Low Energy NUS stack nhẹ, tiết kiệm RAM.
 * `bodmer/TFT_eSPI @ ^2.5.43`: Driver màn hình LCD ILI9341 tối ưu SPI.
 * `bblanchon/ArduinoJson @ ^7.0.0`: Đóng gói payload JSON.
-* `4-20ma/ModbusMaster @ ^2.0.1`: Đọc thanh ghi Modbus RTU qua RS485 (khi gắn cảm biến thật).
+* `4-20ma/ModbusMaster @ ^2.0.1`: Đọc thanh ghi Modbus RTU qua RS485.
 
 ## 4. Cấu hình PlatformIO (`platformio.ini`)
 ```ini
@@ -67,20 +67,20 @@ firmware/esp3/
 └── src/
     ├── ble_nus.h / .cpp    # Quản lý NimBLE Server, Advertising, Callbacks
     ├── display.h / .cpp    # Khởi tạo TFT_eSPI, render màn hình (TDS, BLE status)
-    ├── sensor.h / .cpp     # Bộ mô phỏng TDS / Đọc RS485 Modbus
-    └── main.cpp            # Setup & Vòng lặp điều phối chính (5s/lần)
+    ├── sensor.h / .cpp     # Module đọc cảm biến Nhiệt độ đất qua RS485 Modbus
+    └── main.cpp            # Setup & Vòng lặp điều phối chính (2s/lần)
 ```
 
 ## 6. Chi tiết kỹ thuật BLE NUS
-* **Device Name:** `ESP3-TDS`
+* **Device Name:** `ESP3-PT100` (hoặc `ESP3-TDS`)
 * **Service UUID:** `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
 * **TX Characteristic (Notify):** `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
 * **RX Characteristic (Write):** `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
-* **Payload Notify:** `{"tds_ppm": 520}`
+* **Payload Notify:** `{"soil_temp": 27.0}`
 
 ## 7. Các bước thực hiện
 1. Tạo `platformio.ini` theo cấu hình trên.
 2. Cài đặt module hiển thị `display` kiểm tra màn hình và đèn nền.
 3. Cài đặt module BLE NUS với callback kết nối/ngắt kết nối.
-4. Tích hợp sensor logic (bộ sinh bước nhảy 500–570 ppm).
+4. Tích hợp module đọc cảm biến nhiệt độ đất qua RS485 Modbus RTU.
 5. Build test bằng `pio run`.

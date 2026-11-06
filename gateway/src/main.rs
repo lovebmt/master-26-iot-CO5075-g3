@@ -60,7 +60,7 @@ async fn real_run() -> Result<()> {
         config.nanomq_port,
         &config.nanomq_username,
         &config.nanomq_password,
-        config.devices.to_vec(),
+        config.devices.clone(),
         store.clone(),
     )
     .await?;
@@ -147,7 +147,7 @@ async fn real_run() -> Result<()> {
 
     let state = Arc::new(AppState {
         store,
-        devices: config.devices.to_vec(),
+        devices: config.devices.clone(),
         env: jinja_env,
         id_counter: Arc::new(Mutex::new(0)),
         local_client: Some(local_client),

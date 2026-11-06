@@ -25,6 +25,14 @@
           <input type="hidden" name="value" value="off">
           <button type="submit">Off</button>
         </form>
+        <form class="light-ctrl" hx-post="/devices/esp2/ota" hx-target="#dashboard-content" hx-swap="innerHTML" style="margin-left:6px;">
+          <input type="hidden" name="force" value="false">
+          <button type="submit" title="Notify ESP2 to prompt user on screen" style="background:#2563eb;color:#fff;">Notify FW</button>
+        </form>
+        <form class="light-ctrl" hx-post="/devices/esp2/ota" hx-target="#dashboard-content" hx-swap="innerHTML">
+          <input type="hidden" name="force" value="true">
+          <button type="submit" title="Force ESP2 to update immediately" style="background:#dc2626;color:#fff;" onclick="return confirm('Force OTA update immediately on ESP2?')">Force OTA</button>
+        </form>
         {% else %}—{% endif %}
         <a href="/devices/{{ d.local_id }}/chart" class="chart-btn">See Chart</a>
       </td>

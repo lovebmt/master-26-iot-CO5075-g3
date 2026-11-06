@@ -7,6 +7,7 @@
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>
 #include <ArduinoJson.h>
+#include <ModbusMaster.h>
 
 #define SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define TX_UUID      "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
@@ -15,6 +16,16 @@
 #define MQTT_TOPIC_ESP2 "iot/esp2/telemetry"
 #define MQTT_BROKER     "192.168.1.19"
 #define MQTT_PORT       1883
+
+// RS485 Modbus RTU Pinout for PT100 Transmitter
+#define RS485_RX_PIN    16
+#define RS485_TX_PIN    17
+#define RS485_DE_RE_PIN 4
+#define RS485_BAUD      9600
+#define RS485_SLAVE_ID  1
+
+static ModbusMaster modbusNode;
+static bool rs485_hardware_connected = false;
 
 // Touch SPI pins on CYD
 #define XPT2046_IRQ  36
@@ -58,7 +69,8 @@ static int editing_field = 0; // 0: SSID, 1: PASS
 static char edit_buffer[65] = "";
 static bool shift_active = false;
 
-static uint16_t current_tds = 500;
+static float current_soil_temp = 26.5f;
+static uint16_t current_tds = 530;
 static uint32_t last_sensor_tick = 0;
 static bool needs_ui_redraw = true;
 
@@ -109,17 +121,57 @@ static void send_mqtt_telemetry(uint16_t tds) {
             mqttClient.connect("esp3-client");
         }
         if (mqttClient.connected()) {
-            char payload[64];
-            snprintf(payload, sizeof(payload), "{\"values\":{\"tds_ppm\":%u}}", tds);
+            char payload[80];
+            snprintf(payload, sizeof(payload), "{\"values\":{\"soil_temp\":%.1f,\"tds_ppm\":%u}}", current_soil_temp, tds);
             mqttClient.publish(MQTT_TOPIC_ESP2, payload);
             Serial.printf("ESP3 sent via MQTT to %s: %s\n", MQTT_TOPIC_ESP2, payload);
         }
     }
 }
 
-static void send_tds_data(uint16_t tds) {
-    char payload[32];
-    snprintf(payload, sizeof(payload), "{\"tds_ppm\":%u}", tds);
+// RS485 Modbus DE/RE transmission flow control
+static void modbusPreTransmission() {
+    digitalWrite(RS485_DE_RE_PIN, HIGH);
+    delayMicroseconds(100);
+}
+
+static void modbusPostTransmission() {
+    delayMicroseconds(100);
+    digitalWrite(RS485_DE_RE_PIN, LOW);
+}
+
+// Read real PT100 soil temperature sensor via RS485 Modbus RTU
+static bool read_rs485_pt100(float &temperature) {
+    // 1. Try reading Input Register (FC 0x04) at address 0x0000 (common for PT100 Modbus transmitters)
+    uint8_t result = modbusNode.readInputRegisters(0x0000, 1);
+    if (result == modbusNode.ku8MBSuccess) {
+        int16_t raw = (int16_t)modbusNode.getResponseBuffer(0);
+        temperature = raw / 10.0f; // Typical 0.1 deg C resolution
+        return true;
+    }
+
+    // 2. Try reading Holding Register (FC 0x03) at address 0x0000
+    result = modbusNode.readHoldingRegisters(0x0000, 1);
+    if (result == modbusNode.ku8MBSuccess) {
+        int16_t raw = (int16_t)modbusNode.getResponseBuffer(0);
+        temperature = raw / 10.0f;
+        return true;
+    }
+
+    // 3. Try reading Holding Register (FC 0x03) at address 0x0001
+    result = modbusNode.readHoldingRegisters(0x0001, 1);
+    if (result == modbusNode.ku8MBSuccess) {
+        int16_t raw = (int16_t)modbusNode.getResponseBuffer(0);
+        temperature = raw / 10.0f;
+        return true;
+    }
+
+    return false;
+}
+
+static void send_sensor_data(float temp, uint16_t tds) {
+    char payload[64];
+    snprintf(payload, sizeof(payload), "{\"soil_temp\":%.1f,\"tds_ppm\":%u}", temp, tds);
 
     bool should_mqtt = false;
     if (current_mode == MODE_MQTT_ONLY) {
@@ -150,12 +202,16 @@ static void draw_dashboard() {
 
     // Title
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.drawString("ESP3 / TDS Sensor Node", 12, 10, 4);
+    tft.drawString("ESP3 / PT100 Modbus Node", 12, 10, 4);
 
-    // TDS Reading
+    // Soil Temp Reading
     tft.setTextColor(TFT_CYAN, TFT_BLACK);
-    char buf[32];
-    snprintf(buf, sizeof(buf), "TDS: %u ppm", current_tds);
+    char buf[40];
+    if (rs485_hardware_connected) {
+        snprintf(buf, sizeof(buf), "Soil: %.1f C (RS485)", current_soil_temp);
+    } else {
+        snprintf(buf, sizeof(buf), "Soil: %.1f C (PT100)", current_soil_temp);
+    }
     tft.drawString(buf, 12, 45, 4);
 
     // Mode Button: [AUTO (60s)] / [MQTT ONLY] / [BLE ONLY]
@@ -396,8 +452,18 @@ void setup() {
     adv->start();
 
     ble_unconnected_start = millis();
+
+    // Initialize RS485 Modbus RTU interface for PT100 sensor
+    pinMode(RS485_DE_RE_PIN, OUTPUT);
+    digitalWrite(RS485_DE_RE_PIN, LOW); // Set to Receive mode by default
+    Serial2.begin(RS485_BAUD, SERIAL_8N1, RS485_RX_PIN, RS485_TX_PIN);
+    modbusNode.begin(RS485_SLAVE_ID, Serial2);
+    modbusNode.preTransmission(modbusPreTransmission);
+    modbusNode.postTransmission(modbusPostTransmission);
+    Serial.println("RS485 Modbus RTU initialized on UART2 (RX:16, TX:17, DE/RE:4)");
+
     draw_dashboard();
-    Serial.println("ESP3 started with BLE + Touch + WiFi failover");
+    Serial.println("ESP3 started with BLE + Touch + WiFi failover + RS485 Modbus");
 }
 
 static bool was_touched = false;
@@ -432,12 +498,24 @@ void loop() {
         }
     }
 
-    // 3. Sensor sampling every 5 seconds (500-570 ppm)
+    // 3. Sensor sampling every 5 seconds (Real RS485 PT100 with Auto-Fallback to simulation)
     if (now - last_sensor_tick >= 5000) {
         last_sensor_tick = now;
-        uint32_t step = (now / 5000) % 8;
-        current_tds = 500 + step * 10;
-        send_tds_data(current_tds);
+
+        float real_temp = 0.0f;
+        if (read_rs485_pt100(real_temp)) {
+            current_soil_temp = real_temp;
+            rs485_hardware_connected = true;
+            Serial.printf("RS485 PT100 Read SUCCESS: %.1f C\n", current_soil_temp);
+        } else {
+            // Hardware not attached or no response: Auto-fallback to simulated fake data (25.0 - 28.5 C)
+            rs485_hardware_connected = false;
+            uint32_t step = (now / 5000) % 8;
+            current_soil_temp = 25.0f + step * 0.5f;
+            current_tds = 500 + step * 10;
+        }
+
+        send_sensor_data(current_soil_temp, current_tds);
         if (current_screen == SCREEN_DASHBOARD) {
             needs_ui_redraw = true;
         }

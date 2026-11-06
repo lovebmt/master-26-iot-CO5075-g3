@@ -6,7 +6,7 @@ use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 
 use crate::{config::DeviceConfig, store::Store, telemetry};
 
-const TOPICS: [&str; 2] = ["iot/esp1/telemetry", "iot/esp2/telemetry"];
+const TOPICS: [&str; 3] = ["iot/esp1/telemetry", "iot/esp2/telemetry", "iot/esp3/telemetry"];
 
 pub struct LocalMqtt {
     task: JoinHandle<()>,
@@ -49,6 +49,7 @@ impl LocalMqtt {
                         let Some(device_id) = (match message.topic.as_str() {
                             "iot/esp1/telemetry" => Some("esp1"),
                             "iot/esp2/telemetry" => Some("esp2"),
+                            "iot/esp3/telemetry" => Some("esp3"),
                             _ => None,
                         }) else { continue };
                         let received_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {

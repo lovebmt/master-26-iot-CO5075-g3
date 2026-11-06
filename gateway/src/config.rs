@@ -12,7 +12,7 @@ pub struct Config {
     pub tb_mqtt_port: u16,
     pub tb_gateway_device_name: String,
     pub tb_gateway_token: String,
-    pub devices: [DeviceConfig; 2],
+    pub devices: Vec<DeviceConfig>,
     pub database_url: String,
     pub http_bind: SocketAddr,
 }
@@ -85,18 +85,31 @@ impl Config {
             tb_mqtt_port: port("TB_MQTT_PORT")?,
             tb_gateway_device_name: required("TB_GATEWAY_DEVICE_NAME")?,
             tb_gateway_token: required("TB_GATEWAY_TOKEN")?,
-            devices: [
-                DeviceConfig {
-                    local_id: "esp1".into(),
-                    name: required("TB_DEVICE_ESP1")?,
-                    profile: required("TB_PROFILE_ESP1")?,
-                },
-                DeviceConfig {
-                    local_id: "esp2".into(),
-                    name: required("TB_DEVICE_ESP2")?,
-                    profile: required("TB_PROFILE_ESP2")?,
-                },
-            ],
+            devices: {
+                let mut devs = vec![
+                    DeviceConfig {
+                        local_id: "esp1".into(),
+                        name: required("TB_DEVICE_ESP1")?,
+                        profile: required("TB_PROFILE_ESP1")?,
+                    },
+                    DeviceConfig {
+                        local_id: "esp2".into(),
+                        name: required("TB_DEVICE_ESP2")?,
+                        profile: required("TB_PROFILE_ESP2")?,
+                    },
+                ];
+                if let (Some(name), Some(profile)) = (
+                    env.get("TB_DEVICE_ESP3").filter(|v| !v.trim().is_empty()),
+                    env.get("TB_PROFILE_ESP3").filter(|v| !v.trim().is_empty()),
+                ) {
+                    devs.push(DeviceConfig {
+                        local_id: "esp3".into(),
+                        name: name.clone(),
+                        profile: profile.clone(),
+                    });
+                }
+                devs
+            },
             database_url: required("DATABASE_URL")?,
             http_bind,
         })
@@ -122,6 +135,8 @@ mod tests {
             ("TB_PROFILE_ESP1", "CO2 Sensor"),
             ("TB_DEVICE_ESP2", "ESP2"),
             ("TB_PROFILE_ESP2", "TDS Sensor"),
+            ("TB_DEVICE_ESP3", "ESP3"),
+            ("TB_PROFILE_ESP3", "esp_ble"),
             ("DATABASE_URL", "sqlite://gateway.db?mode=rwc"),
         ]
         .into_iter()
@@ -143,6 +158,9 @@ mod tests {
         assert_eq!(config.devices[1].local_id, "esp2");
         assert_eq!(config.devices[1].name, "ESP2");
         assert_eq!(config.devices[1].profile, "TDS Sensor");
+        assert_eq!(config.devices[2].local_id, "esp3");
+        assert_eq!(config.devices[2].name, "ESP3");
+        assert_eq!(config.devices[2].profile, "esp_ble");
     }
 
     #[test]

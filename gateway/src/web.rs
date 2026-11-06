@@ -66,6 +66,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/logout", get(logout))
         .route("/devices", get(devices_fragment))
         .route("/devices/esp2/light", post(set_light))
+        .route("/devices/esp2/ota", post(trigger_ota_post))
+        .route("/firmware/esp2.bin", get(serve_firmware))
+        .route("/firmware/version.json", get(serve_firmware_version))
         .route("/devices/:device_id/chart", get(device_chart))
         .route("/queue/clean", post(clean_queue))
         .route("/static/style.css", get(stylesheet))
@@ -166,6 +169,85 @@ async fn devices_fragment(State(s): State<Arc<AppState>>) -> impl IntoResponse {
 #[derive(Deserialize)]
 pub struct LightForm {
     pub value: String,
+}
+
+#[derive(Deserialize)]
+pub struct OtaForm {
+    pub force: Option<String>,
+}
+
+async fn trigger_ota_post(
+    State(s): State<Arc<AppState>>,
+    Form(form): Form<OtaForm>,
+) -> Response {
+    let mut counter = s.id_counter.lock().await;
+    *counter += 1;
+    let cid = format!("dash-ota-{}", *counter);
+    drop(counter);
+
+    let force = form.force.as_deref() == Some("true");
+    let payload = serde_json::json!({
+        "id": cid,
+        "method": "ota_update",
+        "params": {
+            "url": "http://192.168.1.19:8080/firmware/esp2.bin",
+            "version": "v1.0.1",
+            "force": force
+        }
+    })
+    .to_string();
+
+    if let Some(client) = &s.local_client {
+        let _ = client
+            .publish(
+                "iot/esp2/command",
+                rumqttc::QoS::AtLeastOnce,
+                false,
+                payload.as_bytes(),
+            )
+            .await;
+    }
+
+    let rows = build_rows(&s).await;
+    let queue_count = s.store.outbox_count().await.unwrap_or(0);
+    let tmpl = s.env.get_template("_devices.html").unwrap();
+    Html(tmpl.render(context!(devices => rows, queue_count => queue_count)).unwrap()).into_response()
+}
+
+async fn serve_firmware() -> Response {
+    let paths = [
+        "firmware/esp2.bin",
+        "gateway/firmware/esp2.bin",
+        "../gateway/firmware/esp2.bin",
+    ];
+    for p in &paths {
+        if let Ok(bytes) = tokio::fs::read(p).await {
+            return (
+                StatusCode::OK,
+                [
+                    (header::CONTENT_TYPE, "application/octet-stream"),
+                    (
+                        header::CONTENT_DISPOSITION,
+                        "attachment; filename=\"esp2.bin\"",
+                    ),
+                ],
+                bytes,
+            )
+                .into_response();
+        }
+    }
+    (StatusCode::NOT_FOUND, "Firmware binary not found").into_response()
+}
+
+async fn serve_firmware_version() -> impl IntoResponse {
+    let payload = serde_json::json!({
+        "version": "1.0.3",
+        "url": "http://192.168.1.19:8080/firmware/esp2.bin"
+    });
+    (
+        [(header::CONTENT_TYPE, "application/json")],
+        payload.to_string(),
+    )
 }
 
 #[derive(Deserialize)]
@@ -386,6 +468,59 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), 200);
+    }
+
+    #[tokio::test]
+    async fn ota_notify_and_force_accepted() {
+        let state = test_state().await;
+        let app = router(state.clone());
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/devices/esp2/ota")
+                    .header("content-type", "application/x-www-form-urlencoded")
+                    .body(axum::body::Body::from("force=false"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+
+        let app2 = router(state);
+        let resp2 = app2
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/devices/esp2/ota")
+                    .header("content-type", "application/x-www-form-urlencoded")
+                    .body(axum::body::Body::from("force=true"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp2.status(), 200);
+    }
+
+    #[tokio::test]
+    async fn firmware_endpoint_works() {
+        let state = test_state().await;
+        let app = router(state);
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri("/firmware/esp2.bin")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        // Since firmware/esp2.bin or gateway/firmware/esp2.bin exists, it returns 200
+        assert_eq!(resp.status(), 200);
+        assert_eq!(
+            resp.headers().get("content-type").unwrap(),
+            "application/octet-stream"
+        );
     }
 
     #[tokio::test]

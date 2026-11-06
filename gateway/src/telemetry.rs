@@ -60,14 +60,29 @@ fn parse_at(
     let mut normalized = Map::new();
     for (key, value) in values {
         match (device_id, key.as_str()) {
-            ("esp1", "co2_ppm") | ("esp2", "tds_ppm") => {
+            ("esp1", "co2_ppm")
+            | ("esp2", "tds_ppm")
+            | ("esp3", "tds_ppm") => {
                 value
                     .as_f64()
                     .filter(|number| number.is_finite() && *number >= 0.0)
                     .ok_or_else(|| anyhow!("{key} must be a finite non-negative number"))?;
                 normalized.insert(key.clone(), value.clone());
             }
+            ("esp2", "soil_temp")
+            | ("esp2", "soil_temp_c")
+            | ("esp3", "soil_temp")
+            | ("esp3", "soil_temp_c") => {
+                value
+                    .as_f64()
+                    .filter(|number| number.is_finite() && *number >= -50.0 && *number <= 150.0)
+                    .ok_or_else(|| anyhow!("{key} must be a finite temperature"))?;
+                normalized.insert(key.clone(), value.clone());
+            }
             ("esp2", "light_on") if value.is_boolean() => {
+                normalized.insert(key.clone(), value.clone());
+            }
+            ("esp1" | "esp2" | "esp3", "fw_version" | "version") if value.is_string() => {
                 normalized.insert(key.clone(), value.clone());
             }
             _ => bail!("unknown measurement for {device_id}: {key}"),

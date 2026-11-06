@@ -105,22 +105,79 @@ Các ngưỡng cảnh báo được cấu hình trên RuleChain của CoreIOT. �
 
 Đèn chỉ hỗ trợ điều khiển bật/tắt (on/off) thông thường trên **ESP2**, không áp dụng quy tắc tự động.
 
-### OTA
+### OTA và Cập nhật Firmware
 
-Chức năng cập nhật firmware qua mạng (OTA) được triển khai trên **ESP2**.
+Chức năng cập nhật firmware qua mạng (OTA) được triển khai trên **ESP2** (ESP32-2432S028R tích hợp LCD cảm ứng), hỗ trợ cả hai cơ chế: người dùng chủ động kiểm tra tại chỗ và máy chủ CoreIOT/ThingsBoard ra lệnh từ xa.
+
+#### 1. Ánh xạ Device Profile trên CoreIOT / ThingsBoard
+Gateway đăng ký và kết nối các thiết bị xuống CoreIOT (`v1/gateway/connect`) theo đúng profile tương ứng:
+* **ESP1**: Device name `ESP1`, Profile **`esp_temp_humi`** (Cảm biến nhiệt độ, độ ẩm qua I²C).
+* **ESP2**: Device name `ESP2`, Profile **`esp_hub`** (Hub trung tâm, màn hình hiển thị, điều khiển đèn/quạt, nhận BLE).
+* **ESP3**: Device name `ESP3`, Profile **`esp_ble`** (Cảm biến đo truyền qua BLE/Modbus).
+
+#### 2. Vị trí file nhị phân Firmware (`.bin`) và Kho OTA CoreIOT
+* **Sau khi biên dịch bằng PlatformIO:**
+  ```text
+  firmware/esp2/.pio/build/esp32dev/firmware.bin
+  ```
+* **Lưu trữ tập trung trên kho CoreIOT OTA Packages (ThingsBoard):**
+  * Gói Firmware: **`ESP2 Hub Firmware`**, phiên bản **`1.0.3`**, Profile **`esp_hub`**.
+  * File `.bin` thật (1.26 MB) đã được upload trực tiếp vào kho CoreIOT qua REST API (`POST /api/otaPackage/{id}?checksumAlgorithm=SHA256`).
+  * Checksum SHA-256: `7a002f593b951eb6889db2a309b526479e567630829584906c799fa8f7b35c2e`.
+  * URL tải trực tiếp chính thức từ CoreIOT:
+    ```text
+    https://fuvi-server.tailc75d93.ts.net/api/otaPackage/{packageId}/download
+    ```
+* **File lưu tại Gateway để phân phối tải nội bộ (Local Cache Delivery):**
+  * Gateway định kỳ hoặc khi có thông báo sẽ tải file nhị phân từ CoreIOT URL về lưu đệm tại:
+    ```text
+    gateway/firmware/esp2.bin
+    ```
+  * Gateway phục vụ trực tiếp file này cho ESP2 tại URL nội bộ: `http://<IP_GATEWAY>:8080/firmware/esp2.bin` và endpoint thông tin phiên bản `http://<IP_GATEWAY>:8080/firmware/version.json`.
+  * **Lợi ích**: Không dùng bất kỳ external URL nào của bên thứ 3 (như GitHub, S3). ESP2 tải firmware trong mạng LAN chỉ mất 3-5 giây và không phụ thuộc vào kết nối internet bên ngoài của ESP2.
+
+#### 3. Cấu hình Nginx & Minikube Ingress trên máy chủ CoreIOT
+* Máy chủ CoreIOT (`fuvi-server.tailc75d93.ts.net` / `192.168.1.32`) chạy cụm Minikube (profile `tb2`) phía sau Docker container reverse proxy `mega-nginx-minikube-tb2`.
+* Để hỗ trợ upload các file binary firmware ESP32 có dung lượng lớn (> 1MB), server đã được cấu hình:
+  * Nginx Host Container ([`/home/justin/dienmega/thingsboard_2/nginx/nginx.conf`](file:///home/justin/dienmega/thingsboard_2/nginx/nginx.conf)): cấu hình `client_max_body_size 100M;` trong cả block `http` và `server`.
+  * Kubernetes Ingress (`tb-ingress` trong namespace `thingboard-dev`): gắn annotation `nginx.ingress.kubernetes.io/proxy-body-size: "100m"`.
+
+#### 4. Các kịch bản và cơ chế thực hiện OTA
+* **Kịch bản 1: Người dùng chủ động kiểm tra (Check New FW trên ESP2)**
+  * Trên màn hình cảm ứng LCD của ESP2 có nút **`[CHECK FW]`** (song song nút bấm trên Web local `http://<IP_ESP2>:8080/`).
+  * Khi bấm, ESP2 gửi HTTP GET kiểm tra `version.json` từ Gateway:
+    * Nếu phát hiện phiên bản trên server mới hơn phiên bản hiện tại (`FW_VERSION`): màn hình ESP2 lập tức bật hộp thoại popup:  
+      **`FIRMWARE UPDATE — New version: xxx — Update now? [YES] [NO]`**.
+    * Người dùng chạm **`YES`** -> ESP2 nạp OTA và tự reboot; chạm **`NO`** -> hủy thông báo.
+    * Nếu đang là phiên bản mới nhất: màn hình báo `FW IS UP-TO-DATE!`.
+* **Kịch bản 2: Điều khiển từ xa qua CoreIOT / ThingsBoard Dashboard (RPC)**
+  * Dashboard tích hợp 2 widget RPC:
+    * **`Notify New FW`** (`force: false`): Gửi RPC `ota_update`, ESP2 hiển thị popup hỏi xác nhận `[YES] [NO]` trên màn hình thật của thiết bị.
+    * **`Force OTA Update`** (`force: true`): Gửi RPC `ota_update`, ESP2 tự động tải nhị phân và nạp ngay lập tức mà không cần tương tác màn hình.
+* **Kịch bản 3: Tự tay upload trực tiếp qua Web cục bộ của ESP2**
+  * Truy cập `http://<IP_ESP2>:8080/` -> chọn mục *Local OTA Firmware Upload* -> chọn file `.bin` -> bấm *Upload*.
+* **Kịch bản 4: Quản lý qua kho OTA Updates trên CoreIOT**
+  * Vào CoreIOT -> **Advanced** -> **OTA Updates** -> Tạo gói mới với Device Profile `esp_hub`, upload file `esp2.bin` và gán cho thiết bị `ESP2`.
+
+#### 5. Báo cáo trạng thái phiên bản lên CoreIOT
+ESP2 gửi kèm trường `fw_version` và nhiệt độ đất `soil_temp` (đo từ PT100 Modbus RS485 qua ESP3 BLE) trong bản tin telemetry định kỳ:
+```json
+{"values":{"soil_temp":26.5,"light_on":false,"fw_version":"1.0.2"}}
+```
+Dữ liệu này được Gateway chuẩn hóa và đẩy lên CoreIOT theo thời gian thực (hiển thị tại Latest Telemetry và bảng dữ liệu Dashboard).
 
 ## Chuẩn dữ liệu và điều khiển
 
 | Dữ liệu | Quy ước |
 |---|---|
 | Bản tin ESP1 | Giữ bản tin gốc từ thiết bị. Vũ và Tâm dùng một bản tin thật để chốt chủ đề MQTT và ánh xạ trường. |
-| Số đo chuẩn hóa | `source_id`, `zone_id`, `temperature_c` theo °C, `humidity_pct` theo %RH, `ts_ms` theo thời gian Unix mili giây, `time_source` và `simulated`. Nếu Gateway gắn thời điểm nhận, dùng `time_source: "gateway_received"`. |
+| Số đo chuẩn hóa | `source_id`, `zone_id`, `temperature_c` theo °C, `humidity_pct` theo %RH, `ts_ms` theo thời gian Unix mili giây, `time_source`. Nếu Gateway gắn thời điểm nhận, dùng `time_source: "gateway_received"`. |
 | ESP3 → ESP2 → Gateway | ESP3 gửi nhiệt độ và độ ẩm qua BLE. ESP2 chuyển tiếp qua MQTT, giữ nguồn `esp3` và số thứ tự mẫu `seq` để đối chiếu khi nghiệm thu. |
 | Lệnh quạt | Gateway gửi đến `g3/esp2/command`, ESP2 trả kết quả tại `g3/esp2/ack` với cùng `request_id`. Lệnh đặt trạng thái đích và tắt lưu lệnh (MQTT retain). |
 | Trạng thái | ESP2 công bố `fan_on` và `mode` tại `g3/esp2/status`. Khi hết hạn phản hồi, giao diện báo chưa xác nhận. Khi mất mẫu đo, đánh dấu dữ liệu cũ và tạm dừng phát lệnh tự động dựa trên mẫu đó. |
 
 ```json
-{"source_id":"esp1","zone_id":"zone_01","temperature_c":27.1,"humidity_pct":88.0,"ts_ms":1793764800000,"time_source":"gateway_received","simulated":true}
+{"source_id":"esp1","zone_id":"zone_01","temperature_c":27.1,"humidity_pct":88.0,"ts_ms":1793764800000,"time_source":"gateway_received"}
 ```
 
 ```json

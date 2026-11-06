@@ -1,23 +1,25 @@
 # Kế hoạch phát triển ESP2 (C/C++ PlatformIO)
 
-Chuyển đổi từ `firmware/esp2_r` (Rust ESP-IDF) sang C/C++ Arduino framework trên PlatformIO cho board **ESP32 Cheap Yellow Display (CYD ESP32-2432S028R)**.
+Chuyển đổi từ `firmware/esp2_r` (Rust ESP-IDF) sang C/C++ Arduino framework trên PlatformIO cho bo mạch **ESP32-2432S028R** (tích hợp màn hình LCD cảm ứng).
 
 ## 1. Mục tiêu & Trách nhiệm
-* **BLE NUS Central:** Quét, kết nối và nhận dữ liệu TDS từ `ESP3-TDS`.
+* **BLE NUS Central:** Quét, kết nối và nhận dữ liệu nhiệt độ đất PT100 từ `ESP3-PT100` (`soil_temp`).
 * **Màn hình hiển thị & Cảm ứng:**
-  * Hiển thị trạng thái BLE, giá trị TDS, nút điều khiển đèn, trạng thái Wi-Fi theo cơ chế delta rendering (không chớp nháy).
-  * Đọc cảm ứng điện trở XPT2046 để bật/tắt đèn tại chỗ.
+  * Hiển thị trạng thái BLE, giá trị `Soil: XX.X C (PT100)`, phiên bản `ESP2 - Ver: xxx`, nút điều khiển đèn, nút **`[CHECK FW]`**, trạng thái Wi-Fi theo cơ chế delta rendering (không chớp nháy).
+  * Đọc cảm ứng điện trở XPT2046 để bật/tắt đèn tại chỗ và kiểm tra cập nhật firmware.
+  * Hộp thoại OTA Prompt: Popup hỏi xác nhận `[YES] [NO]` trực tiếp trên màn hình cảm ứng khi có bản build mới.
 * **Điều khiển LED:** Điều khiển LED RGB onboard (Active-Low) đồng bộ giữa Touch, MQTT và HTTP.
 * **Kết nối Wi-Fi & MQTT:**
   * Kết nối Wi-Fi (hoặc phát AP cấu hình `ESP2-Setup` 192.168.4.1 nếu chưa có Wi-Fi).
-  * Publish telemetry định kỳ lên `iot/esp2/telemetry` (`{"values":{"tds_ppm":..., "light_on":...}}`).
-  * Subscribe `iot/esp2/command` nhận lệnh `set_light`, phản hồi kết quả lên `iot/esp2/result`.
+  * Publish telemetry định kỳ lên `iot/esp2/telemetry` (`{"values":{"soil_temp":..., "light_on":..., "fw_version":...}}`).
+  * Subscribe `iot/esp2/command` nhận lệnh `set_light` và `ota_update`, phản hồi kết quả lên `iot/esp2/result`.
 * **Local Webserver & OTA (Port 8080):**
-  * `GET /`: Giao diện Web hiển thị TDS, trạng thái đèn, trạng thái BLE và nút bấm điều khiển.
-  * `POST /light?state=true|false`: HTTP API bật/tắt đèn.
+  * `GET /`: Giao diện Web hiển thị Soil Temp, trạng thái đèn, trạng thái BLE, nút bấm điều khiển đèn và kiểm tra firmware.
+  * `POST /light`: HTTP API bật/tắt đèn.
+  * `POST /check_fw`: Kích hoạt kiểm tra phiên bản mới từ Gateway.
   * `POST /ota`: Nhận firmware binary stream, ghi flash OTA và reboot.
 
-## 2. Phần cứng & Sơ đồ nối chân (CYD ESP32-2432S028R)
+## 2. Phần cứng & Sơ đồ nối chân (ESP32-2432S028R)
 * **Màn hình TFT ILI9341 (SPI2):**
   * SCK: GPIO 14, MOSI: GPIO 13, MISO: GPIO 12, CS: GPIO 15, DC: GPIO 2, BL: GPIO 21 (HIGH = Sáng)
 * **Cảm ứng Touch XPT2046 (SPI3 riêng biệt):**
@@ -102,14 +104,15 @@ firmware/esp2/
 * **BLE NUS:**
   * Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
   * TX Characteristic: `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
-  * Nhận: `{"tds_ppm": <number>}`
+  * Nhận: `{"soil_temp": <number>}`
 * **MQTT Topics:**
-  * Telemetry (1s/lần): `iot/esp2/telemetry` → `{"values":{"tds_ppm":540,"light_on":true}}`
-  * Command: `iot/esp2/command` → `{"id":"<correlation_id>","method":"set_light","params":{"state":true}}`
+  * Telemetry (1s/lần): `iot/esp2/telemetry` → `{"values":{"soil_temp":27.0,"light_on":false,"fw_version":"1.0.2"}}`
+  * Command: `iot/esp2/command` → `{"id":"<correlation_id>","method":"set_light","params":{"state":true}}` hoặc `{"method":"ota_update","params":{"url":"...","version":"...","force":false}}`
   * Result: `iot/esp2/result` → `{"id":"<correlation_id>","success":true}`
 * **HTTP Endpoints (Port 8080):**
-  * `GET /`: Trang HTML quản lý
-  * `POST /light?state=true|false`: Điều khiển đèn
+  * `GET /`: Trang HTML quản lý (hiển thị Soil Temp, nút điều khiển đèn, kiểm tra firmware)
+  * `POST /light`: Điều khiển đèn
+  * `POST /check_fw`: Kích hoạt kiểm tra cập nhật từ Gateway
   * `POST /ota`: Nhận nhị phân firmware và nạp trực tiếp qua `Update` class
 
 ## 8. Các bước thực hiện
