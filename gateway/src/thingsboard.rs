@@ -63,7 +63,7 @@ impl ThingsBoard {
             }
         });
 
-        tokio::time::timeout(Duration::from_secs(10), ready_rx)
+        tokio::time::timeout(Duration::from_secs(30), ready_rx)
             .await
             .map_err(|_| anyhow::anyhow!("ThingsBoard subscribe timed out"))??;
 

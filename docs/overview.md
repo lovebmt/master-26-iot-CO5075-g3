@@ -151,15 +151,63 @@ Gateway đăng ký và kết nối các thiết bị xuống CoreIOT (`v1/gatewa
     * Người dùng chạm **`YES`** -> ESP2 nạp OTA và tự reboot; chạm **`NO`** -> hủy thông báo.
     * Nếu đang là phiên bản mới nhất: màn hình báo `FW IS UP-TO-DATE!`.
 * **Kịch bản 2: Điều khiển từ xa qua CoreIOT / ThingsBoard Dashboard (RPC)**
-  * Dashboard tích hợp 2 widget RPC:
-    * **`Notify New FW`** (`force: false`): Gửi RPC `ota_update`, ESP2 hiển thị popup hỏi xác nhận `[YES] [NO]` trên màn hình thật của thiết bị.
+  * Dashboard tích hợp widget điều khiển OTA động (`CoreIOT OTA Packages — Version Selector & Dispatcher`):
+    * Chọn phiên bản mục tiêu từ kho CoreIOT (`v1.0.4`, `v1.0.5`, `v1.0.6`, `v1.0.3`).
+    * **`Notify ESP2 (Prompt)`** (`force: false`): Gửi RPC `ota_update`, ESP2 hiển thị popup hỏi xác nhận `[YES] [NO]` trên màn hình thật của thiết bị.
     * **`Force OTA Update`** (`force: true`): Gửi RPC `ota_update`, ESP2 tự động tải nhị phân và nạp ngay lập tức mà không cần tương tác màn hình.
 * **Kịch bản 3: Tự tay upload trực tiếp qua Web cục bộ của ESP2**
   * Truy cập `http://<IP_ESP2>:8080/` -> chọn mục *Local OTA Firmware Upload* -> chọn file `.bin` -> bấm *Upload*.
 * **Kịch bản 4: Quản lý qua kho OTA Updates trên CoreIOT**
   * Vào CoreIOT -> **Advanced** -> **OTA Updates** -> Tạo gói mới với Device Profile `esp_hub`, upload file `esp2.bin` và gán cho thiết bị `ESP2`.
 
-#### 5. Báo cáo trạng thái phiên bản lên CoreIOT
+#### 5. Phân vùng Flash ESP32 & Lưu trình OTA Nội Tại ESP2
+
+**Bảng phân vùng Dual Partition ([`partitions.csv`](../firmware/esp2/partitions.csv)):**
+* **`otadata` (0xe000, 8KB):** Lưu trạng thái chỉ định bootloader (số sequence `ota_seq`). Bootloader khi khởi động đọc phân vùng này để xác định nạp code từ `app0` hay `app1`.
+* **`app0` (0x10000, 1.5MB):** Khe ứng dụng Slot A.
+* **`app1` (0x190000, 1.5MB):** Khe ứng dụng Slot B.
+* **Cơ chế chống brick (Fail-Safe):** Khi đang chạy ở `app0`, OTA sẽ nạp vào `app1` (và ngược lại). Chỉ khi toàn bộ stream HTTP kết thúc và kiểm tra mã băm MD5/SHA256 hợp lệ, `otadata` mới được cập nhật để chuyển boot partition. Nếu đứt mạng hay lỗi giữa chừng, `otadata` giữ nguyên nên thiết bị vẫn khởi động an toàn vào phân vùng cũ.
+
+```mermaid
+flowchart TD
+    subgraph S1["1. Kích hoạt OTA"]
+        T1["Nút [CHECK FW] trên LCD"] --> CHECK["HTTP GET version.json<br/>So khớp version khác bản hiện tại"]
+        T2["Lệnh MQTT iot/esp2/command"] --> PARSE["Parse JSON: method=ota_update<br/>force=true/false"]
+        T3["Web Server :8080"] --> WEB["Bấm Check FW trên Web"]
+    end
+
+    CHECK --> DECIDE{force == true ?}
+    PARSE --> DECIDE
+    WEB --> DECIDE
+
+    subgraph S2["2. UI State Machine"]
+        DECIDE -->|force == false| PROMPT["Màn hình UI_PROMPT<br/>Popup: New version - Update now?<br/>Chờ chạm [YES] / [NO]"]
+        PROMPT -->|Chạm YES| EXEC["Chuyển sang UI_PROGRESS"]
+        PROMPT -->|Chạm NO| CANCEL["Hủy, về UI_NORMAL"]
+        DECIDE -->|force == true| EXEC
+    end
+
+    subgraph S3["3. Tải & Ghi Flash Dual Slot"]
+        EXEC --> CONN["HTTPClient tải esp2.bin từ Gateway"]
+        CONN --> PART["esp_ota_get_next_update_partition()<br/>Xác định khe đối xứng (app0 <-> app1)"]
+        PART --> STREAM["Update.begin()<br/>Đọc từng block 1024B ghi vào flash"]
+        STREAM --> BAR["Cập nhật Progress Bar (0% -> 100%)"]
+    end
+
+    subgraph S4["4. Xác Thực & Đổi Boot"]
+        BAR --> VERIFY["Update.end() & Update.isFinished()<br/>Kiểm tra Magic bytes & Checksum"]
+        VERIFY --> SWITCH["Cập nhật otadata -> Chuyển active boot<br/>Done! Rebooting..."]
+        SWITCH --> REBOOT["ESP.restart()"]
+    end
+
+    subgraph S5["5. Sau Reboot"]
+        REBOOT --> SETUP["setup(): Nạp phân vùng mới"]
+        SETUP --> DISP["LCD đổi tiêu đề: ESP2 - Ver mới"]
+        SETUP --> TELE["Telemetry báo CoreIOT: fw_version mới"]
+    end
+```
+
+#### 6. Báo cáo trạng thái phiên bản lên CoreIOT
 ESP2 gửi kèm trường `fw_version` và nhiệt độ đất `soil_temp` (đo từ PT100 Modbus RS485 qua ESP3 BLE) trong bản tin telemetry định kỳ:
 ```json
 {"values":{"soil_temp":26.5,"light_on":false,"fw_version":"1.0.2"}}

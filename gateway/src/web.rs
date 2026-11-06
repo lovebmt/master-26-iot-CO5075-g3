@@ -239,15 +239,32 @@ async fn serve_firmware() -> Response {
     (StatusCode::NOT_FOUND, "Firmware binary not found").into_response()
 }
 
-async fn serve_firmware_version() -> impl IntoResponse {
+async fn serve_firmware_version() -> Response {
+    let paths = [
+        "gateway/firmware/version.json",
+        "firmware/version.json",
+        "../gateway/firmware/version.json",
+    ];
+    for p in &paths {
+        if let Ok(content) = tokio::fs::read_to_string(p).await {
+            return (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, "application/json")],
+                content,
+            )
+                .into_response();
+        }
+    }
     let payload = serde_json::json!({
-        "version": "1.0.3",
+        "version": "1.0.4",
         "url": "http://192.168.1.19:8080/firmware/esp2.bin"
     });
     (
+        StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
         payload.to_string(),
     )
+        .into_response()
 }
 
 #[derive(Deserialize)]

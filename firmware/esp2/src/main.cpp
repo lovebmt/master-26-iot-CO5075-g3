@@ -11,7 +11,7 @@
 #include <XPT2046_Touchscreen.h>
 #include <ArduinoJson.h>
 
-#define FW_VERSION   "1.0.2"
+#define FW_VERSION   "1.0.3"
 #define TDS_TOPIC    "iot/esp2/telemetry"
 #define CMD_TOPIC    "iot/esp2/command"
 #define RESULT_TOPIC "iot/esp2/result"

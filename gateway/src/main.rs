@@ -115,6 +115,25 @@ async fn real_run() -> Result<()> {
                             info!(device = %tb_name, id = rpc_id, is_on, "replied to ThingsBoard get_light");
                         }
                     } else {
+                        if cmd.is_ota {
+                            let sync_ver = rpc["data"]["params"]["version"]
+                                .as_str()
+                                .unwrap_or("1.0.4")
+                                .to_string();
+                            info!(version = %sync_ver, "Syncing OTA firmware package from CoreIOT repository...");
+                            let _ = tokio::task::spawn_blocking(move || {
+                                let script = if std::path::Path::new("scripts/sync_coreiot_firmware.py").exists() {
+                                    "scripts/sync_coreiot_firmware.py"
+                                } else {
+                                    "gateway/scripts/sync_coreiot_firmware.py"
+                                };
+                                let _ = std::process::Command::new("/Users/mac/.platformio/penv/bin/python")
+                                    .arg(script)
+                                    .arg(&sync_ver)
+                                    .status();
+                            })
+                            .await;
+                        }
                         info!(topic = %cmd.topic, payload = %cmd.payload, "routing RPC to local device");
                         let _ = rpc_local_client.publish(&cmd.topic, rumqttc::QoS::AtLeastOnce, false, cmd.payload.as_bytes()).await;
 

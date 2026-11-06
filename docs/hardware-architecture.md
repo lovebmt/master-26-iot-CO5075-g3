@@ -73,11 +73,16 @@ Rubric scores are earned only for completed features with report/demo evidence. 
   - Telemetry: `iot/esp2/telemetry` với payload chuẩn `{"values":{"soil_temp": 27.0, "light_on": false, "fw_version": "1.0.2"}}`.
   - Command: `iot/esp2/command` nhận lệnh điều khiển đèn (`set_light`) và cập nhật OTA (`ota_update`).
   - Result: `iot/esp2/result` gửi phản hồi xác nhận trạng thái.
-- **T14 (Cơ chế OTA Khép Kín):**
-  - **Kho tập trung CoreIOT**: File nhị phân `esp2.bin` (1.26MB) được upload vào kho **CoreIOT OTA Packages** (Package `ESP2 Hub Firmware v1.0.3`, Profile `esp_hub`).
+- **T14 (Cơ chế OTA Khép Kín & Phân Vùng Dual Flash):**
+  - **Bảng phân vùng Flash ESP32 ([`partitions.csv`](../firmware/esp2/partitions.csv)):** Cấu hình Dual Application Partition chống brick (Fail-Safe A/B ping-pong switching):
+    * `otadata` (0xe000, 8KB): Lưu trạng thái chỉ định bootloader (`ota_seq`). Bootloader đọc phân vùng này khi khởi động để xác định nạp code từ `app0` hay `app1`.
+    * `app0` (0x10000, 1.5MB): Phân vùng ứng dụng Slot A.
+    * `app1` (0x190000, 1.5MB): Phân vùng ứng dụng Slot B.
+    * Khi đang chạy ở Slot A, OTA sẽ ghi đè Slot B (và ngược lại); chỉ khi nạp xong và xác thực checksum thành công mới cập nhật `otadata` để đổi boot partition, nếu lỗi giữa chừng vẫn boot an toàn vào phân vùng cũ.
+  - **Kho tập trung CoreIOT**: Các file nhị phân (`esp2_v1.0.3.bin` ... `esp2_v1.0.6.bin`) được upload trực tiếp vào kho **CoreIOT OTA Packages** (Profile `esp_hub`).
   - **URL tải CoreIOT**: `https://fuvi-server.tailc75d93.ts.net/api/otaPackage/{packageId}/download`.
-  - **Gateway Cache & Local Delivery**: Gateway kéo firmware từ CoreIOT về lưu đệm tại `gateway/firmware/esp2.bin`, sau đó phục vụ nội bộ cho ESP2 qua HTTP `http://<IP_GATEWAY>:8080/firmware/esp2.bin`.
-  - **Điều khiển OTA đa kênh**: Hỗ trợ nút cảm ứng **`[CHECK FW]`** trên màn hình LCD của ESP2 kèm popup hỏi xác nhận `[YES] [NO]`, nút bấm trên Web local `:8080`, và hai widget RPC trên Dashboard ThingsBoard (`Notify New FW` và `Force OTA Update`).
+  - **Gateway Cache & Local Delivery**: Gateway nhận lệnh từ CoreIOT, kéo firmware về lưu đệm tại `gateway/firmware/esp2.bin` và cập nhật `version.json`, sau đó phục vụ nội bộ cho ESP2 qua HTTP `http://<IP_GATEWAY>:8080/firmware/esp2.bin`.
+  - **Điều khiển OTA đa kênh**: Hỗ trợ nút cảm ứng **`[CHECK FW]`** trên màn hình LCD của ESP2 kèm popup hỏi xác nhận `[YES] [NO]`, nút bấm trên Web local `:8080`, và widget chọn phiên bản CoreIOT OTA Packages trực tiếp trên Dashboard ThingsBoard (`Notify Prompt` và `Force OTA`). Xem chi tiết lưu trình tại [`firmware/esp2/README.md`](../firmware/esp2/README.md).
 - **N03 (TFT LCD & Touchscreen):** Bo mạch **ESP32-2432S028R** sử dụng màn hình TFT ILI9341 320x240 và IC cảm ứng XPT2046 trên bus SPI3 riêng biệt, tích hợp LED RGB onboard (GPIO 4, 16, 17, Active-Low).
 
 ## Development server & Platform Architecture

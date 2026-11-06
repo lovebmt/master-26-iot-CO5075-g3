@@ -75,8 +75,7 @@ flowchart TD
 * Dashboard (`thingsboard/dashboard_group3.json`):
   * **ESP2 Timeseries Table**: Giám sát thời gian thực `Soil Temp (°C)`, `Light State`, `FW Version`.
   * **Control ESP2 Light**: Widget công tắc bật/tắt đèn từ xa (RPC `set_light`).
-  * **ESP2 — Notify New FW**: Widget nút bấm phát lệnh RPC `ota_update` (`force: false`), kích hoạt hộp thoại popup `[YES] [NO]` trên màn hình cảm ứng của ESP2.
-  * **ESP2 — Force OTA Update**: Widget nút bấm phát lệnh RPC `ota_update` (`force: true`), kích hoạt cập nhật ngay lập tức.
+  * **CoreIOT OTA Packages — Version Selector & Dispatcher**: Widget tích hợp cho phép chọn phiên bản firmware từ kho CoreIOT (`v1.0.4`, `v1.0.5`, `v1.0.6`, `v1.0.3`) và kích hoạt gửi lệnh `Notify ESP2 (Prompt)` hoặc `Force OTA Update`.
 * Kho lưu trữ **CoreIOT OTA Packages**:
   * Package: `ESP2 Hub Firmware v1.0.3` lưu trữ trực tiếp file nhị phân (1.26MB, SHA-256 Checksum).
   * Quy trình OTA khép kín: CoreIOT $\rightarrow$ Gateway Cache $\rightarrow$ ESP2 LAN Download (không dùng external URL).

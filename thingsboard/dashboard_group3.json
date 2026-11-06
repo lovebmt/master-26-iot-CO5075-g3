@@ -11,7 +11,7 @@
         "bundleAlias": "cards",
         "typeAlias": "timeseries_table",
         "type": "timeseries",
-        "title": "ESP2 — Soil Temp & Light (PT100 Modbus)",
+        "title": "ESP2 \u2014 Soil Temp & Light (PT100 Modbus)",
         "sizeX": 24,
         "sizeY": 5,
         "row": 0,
@@ -25,7 +25,7 @@
                 {
                   "name": "soil_temp",
                   "type": "timeseries",
-                  "label": "Soil Temp (°C)",
+                  "label": "Soil Temp (\u00b0C)",
                   "color": "#16a34a",
                   "settings": {},
                   "_hash": 0.456
@@ -58,7 +58,7 @@
             "displayPagination": true,
             "defaultPageSize": 5
           },
-          "title": "ESP2 — Soil Temp & Light (PT100 Modbus)"
+          "title": "ESP2 \u2014 Soil Temp & Light (PT100 Modbus)"
         }
       },
       "06e9a009-0a5f-4369-a49a-26c12983a24c": {
@@ -93,72 +93,27 @@
           "title": "Control ESP2 Light"
         }
       },
-      "a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d": {
+      "c3d4e5f6-a1b2-4c3d-8e4f-5a6b7c8d9e0f": {
         "isSystemType": true,
-        "bundleAlias": "control_widgets",
-        "typeAlias": "rpcbutton",
-        "typeFullFqn": "control_widgets.rpcbutton",
-        "type": "rpc",
-        "title": "ESP2 — Notify New FW",
-        "sizeX": 8,
+        "bundleAlias": "cards",
+        "typeAlias": "html_card",
+        "typeFullFqn": "cards.html_card",
+        "type": "static",
+        "title": "ESP2 Firmware OTA Management",
+        "sizeX": 16,
         "sizeY": 5,
         "row": 5,
         "col": 8,
         "config": {
-          "targetDevice": {
-            "type": "entity",
-            "entityAliasId": "886e535c-14d3-40ca-99a5-e6e455fbeff6"
-          },
-          "showTitle": true,
+          "datasources": [],
+          "showTitle": false,
           "backgroundColor": "#ffffff",
-          "padding": "16px",
+          "padding": "0px",
           "settings": {
-            "title": "Notify New FW (Prompt ESP2)",
-            "buttonText": "Notify New FW",
-            "methodName": "ota_update",
-            "methodParams": "{\"url\":\"http://192.168.1.19:8080/firmware/esp2.bin\",\"version\":\"1.0.3\",\"force\":false}",
-            "requestTimeout": 5000,
-            "oneWayElseTwoWay": true,
-            "styleButton": {
-              "isRaised": true,
-              "isPrimary": true
-            }
+            "cardHtml": "<div style=\"padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: 100%; box-sizing: border-box;\">\n  <div style=\"display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;\">\n    <span style=\"font-weight: 700; font-size: 16px; color: #0f172a;\">\u26a1 CoreIOT OTA Packages \u2014 Version Selector & Dispatcher</span>\n    <span style=\"font-size: 12px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-weight: 600;\">Repository Sync</span>\n  </div>\n  <div style=\"display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; align-items: center;\">\n    <div>\n      <label style=\"font-size: 13px; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;\">Select Target Version from CoreIOT Repository:</label>\n      <select id=\"ota_target_ver_sel\" style=\"width: 100%; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #94a3b8; font-size: 14px; font-weight: 600; color: #0f172a; background: #f8fafc; cursor: pointer;\">\n        <option value=\"1.0.4\">ESP2 Hub Firmware v1.0.4 (Recommended Update)</option>\n        <option value=\"1.0.5\">ESP2 Hub Firmware v1.0.5 (Feature Release)</option>\n        <option value=\"1.0.6\">ESP2 Hub Firmware v1.0.6 (Latest Patch)</option>\n        <option value=\"1.0.3\">ESP2 Hub Firmware v1.0.3 (Base Release)</option>\n      </select>\n    </div>\n    <div style=\"padding-top: 18px;\">\n      <button onclick=\"var sel = document.getElementById('ota_target_ver_sel');\nvar ver = sel ? sel.value : '1.0.4';\nvar fb = document.getElementById('ota_action_feedback');\nif (fb) {\n  fb.style.color = '#2563eb';\n  fb.innerText = '\u23f3 \u0110ang g\u1eedi l\u1ec7nh OTA v' + ver + ' t\u1edbi CoreIOT...';\n}\nvar token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');\nvar headers = {'Content-Type': 'application/json'};\nif (token) headers['X-Authorization'] = 'Bearer ' + token;\nfetch('/api/plugins/rpc/oneway/cf2cd650-d7e9-11f1-9301-8d833790fa1a', {\n  method: 'POST',\n  credentials: 'same-origin',\n  headers: headers,\n  body: JSON.stringify({ method: 'ota_update', params: { version: ver, force: false } })\n}).then(function(res) {\n  if (res.ok) {\n    if (fb) {\n      fb.style.color = '#16a34a';\n      fb.innerText = '\u2713 \u0110\u00c3 G\u1eecI L\u1ec6NH TH\u00c0NH C\u00d4NG! CoreIOT \u0111ang \u0111\u1ea9y v' + ver + ' (H\u1ecfi x\u00e1c nh\u1eadn tr\u00ean LCD) t\u1edbi ESP2!';\n    }\n  } else {\n    if (fb) {\n      fb.style.color = '#dc2626';\n      fb.innerText = '\u2717 L\u1ed7i: HTTP ' + res.status;\n    }\n  }\n}).catch(function(err) {\n  if (fb) {\n    fb.style.color = '#dc2626';\n    fb.innerText = '\u2717 L\u1ed7i k\u1ebft n\u1ed1i: ' + err;\n  }\n});\" style=\"width: 100%; padding: 9px 14px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;\">\n        \ud83d\udce2 Notify ESP2 (Prompt)\n      </button>\n    </div>\n    <div style=\"padding-top: 18px;\">\n      <button onclick=\"var sel = document.getElementById('ota_target_ver_sel');\nvar ver = sel ? sel.value : '1.0.4';\nvar fb = document.getElementById('ota_action_feedback');\nif (fb) {\n  fb.style.color = '#2563eb';\n  fb.innerText = '\u23f3 \u0110ang g\u1eedi l\u1ec7nh OTA v' + ver + ' t\u1edbi CoreIOT...';\n}\nvar token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');\nvar headers = {'Content-Type': 'application/json'};\nif (token) headers['X-Authorization'] = 'Bearer ' + token;\nfetch('/api/plugins/rpc/oneway/cf2cd650-d7e9-11f1-9301-8d833790fa1a', {\n  method: 'POST',\n  credentials: 'same-origin',\n  headers: headers,\n  body: JSON.stringify({ method: 'ota_update', params: { version: ver, force: true } })\n}).then(function(res) {\n  if (res.ok) {\n    if (fb) {\n      fb.style.color = '#16a34a';\n      fb.innerText = '\u2713 \u0110\u00c3 G\u1eecI L\u1ec6NH TH\u00c0NH C\u00d4NG! CoreIOT \u0111ang \u0111\u1ea9y v' + ver + ' (N\u1ea1p c\u01b0\u1ee1ng b\u1ee9c ngay) t\u1edbi ESP2!';\n    }\n  } else {\n    if (fb) {\n      fb.style.color = '#dc2626';\n      fb.innerText = '\u2717 L\u1ed7i: HTTP ' + res.status;\n    }\n  }\n}).catch(function(err) {\n  if (fb) {\n    fb.style.color = '#dc2626';\n    fb.innerText = '\u2717 L\u1ed7i k\u1ebft n\u1ed1i: ' + err;\n  }\n});\" style=\"width: 100%; padding: 9px 14px; background: #ea580c; color: #ffffff; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;\">\n        \ud83d\ude80 Force OTA Update\n      </button>\n    </div>\n  </div>\n  <div id=\"ota_action_feedback\" style=\"margin-top: 12px; font-size: 13px; font-weight: 600; min-height: 20px;\"></div>\n</div>",
+            "cardCss": ""
           },
-          "title": "ESP2 — Notify New FW"
-        }
-      },
-      "b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e": {
-        "isSystemType": true,
-        "bundleAlias": "control_widgets",
-        "typeAlias": "rpcbutton",
-        "typeFullFqn": "control_widgets.rpcbutton",
-        "type": "rpc",
-        "title": "ESP2 — Force OTA Update",
-        "sizeX": 8,
-        "sizeY": 5,
-        "row": 5,
-        "col": 16,
-        "config": {
-          "targetDevice": {
-            "type": "entity",
-            "entityAliasId": "886e535c-14d3-40ca-99a5-e6e455fbeff6"
-          },
-          "showTitle": true,
-          "backgroundColor": "#ffffff",
-          "padding": "16px",
-          "settings": {
-            "title": "Force OTA Update (Immediate)",
-            "buttonText": "Force OTA Update",
-            "methodName": "ota_update",
-            "methodParams": "{\"url\":\"http://192.168.1.19:8080/firmware/esp2.bin\",\"version\":\"1.0.3\",\"force\":true}",
-            "requestTimeout": 5000,
-            "oneWayElseTwoWay": true,
-            "styleButton": {
-              "isRaised": true,
-              "isPrimary": false
-            }
-          },
-          "title": "ESP2 — Force OTA Update"
+          "title": "ESP2 Firmware OTA Management"
         }
       }
     },
@@ -181,17 +136,11 @@
                 "row": 5,
                 "col": 0
               },
-              "a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d": {
-                "sizeX": 8,
-                "sizeY": 5,
+              "c3d4e5f6-a1b2-4c3d-8e4f-5a6b7c8d9e0f": {
                 "row": 5,
-                "col": 8
-              },
-              "b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e": {
-                "sizeX": 8,
-                "sizeY": 5,
-                "row": 5,
-                "col": 16
+                "col": 8,
+                "sizeX": 16,
+                "sizeY": 5
               }
             },
             "gridSettings": {
@@ -272,6 +221,6 @@
     "id": "48cd26e0-d678-11f1-9301-8d833790fa1a"
   },
   "assignedCustomers": null,
-  "version": 1,
+  "version": 10,
   "externalId": null
 }

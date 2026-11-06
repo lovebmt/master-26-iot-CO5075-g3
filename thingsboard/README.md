@@ -14,10 +14,11 @@ Gateway tự động kết nối các thiết bị hạ tầng lên CoreIOT qua 
 - `ESP3`: Profile **`esp_ble`**
 
 ## 2. Thiết lập OTA Firmware trên CoreIOT
-### Cách 1: Qua Dashboard Widgets (RPC)
-File `dashboard_group3.json` cấu hình sẵn 2 widget nút bấm RPC gửi lệnh xuống thiết bị ESP2:
-- **Notify New FW**: gửi RPC `ota_update` với `force: false` kèm `url` và `version`. ESP2 hiển thị popup `[YES] [NO]` trên màn hình cảm ứng để người vận hành xác nhận.
-- **Force OTA**: gửi RPC `ota_update` với `force: true`. ESP2 tự động nạp OTA và reboot ngay lập tức.
+### Cách 1: Qua Dashboard Widget "OTA Version Selector & Dispatcher"
+Dashboard `IoT System Dashboard — Group 3` tích hợp widget điều khiển OTA động:
+- Dropdown chọn phiên bản từ kho CoreIOT OTA Packages (`v1.0.4`, `v1.0.5`, `v1.0.6`, `v1.0.3`).
+- Nút **Notify ESP2 (Prompt)**: gửi RPC `ota_update` với `force: false`. ESP2 hiển thị popup `[YES] [NO]` trên màn hình cảm ứng để người vận hành xác nhận.
+- Nút **Force OTA**: gửi RPC `ota_update` với `force: true`. ESP2 tự động tải nạp OTA và reboot ngay lập tức.
 
 ### Cách 2: Qua Kho lưu trữ OTA Updates của ThingsBoard (Khép kín không dùng External URL)
 1. Đăng nhập trang quản trị CoreIOT -> **OTA Updates**.
