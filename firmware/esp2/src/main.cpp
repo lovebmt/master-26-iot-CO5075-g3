@@ -39,12 +39,12 @@ static WiFiClient espClient;
 static PubSubClient mqttClient(espClient);
 static WebServer server(8080);
 
-static volatile int16_t current_tds = -1;
+static volatile float current_soil_temp = -999.0f;
 static volatile bool current_light = false;
 static volatile bool current_ble = false;
 static bool current_wifi = false;
 
-static int16_t last_tds_shown = -2;
+static float   last_soil_shown = -999.0f;
 static int8_t  last_light_shown = -1;
 static int8_t  last_ble_shown = -1;
 static int8_t  last_wifi_shown = -1;
@@ -81,9 +81,13 @@ static bool get_touch_point(uint16_t &tx, uint16_t &ty) {
 void send_telemetry() {
     if (mqttClient.connected()) {
         char payload[128];
-        int tds = (current_tds >= 0) ? current_tds : 0;
-        snprintf(payload, sizeof(payload), "{\"values\":{\"tds_ppm\":%d,\"light_on\":%s,\"fw_version\":\"%s\"}}",
-                 tds, current_light ? "true" : "false", FW_VERSION);
+        if (current_soil_temp > -900.0f) {
+            snprintf(payload, sizeof(payload), "{\"values\":{\"soil_temp\":%.1f,\"light_on\":%s,\"fw_version\":\"%s\"}}",
+                     current_soil_temp, current_light ? "true" : "false", FW_VERSION);
+        } else {
+            snprintf(payload, sizeof(payload), "{\"values\":{\"light_on\":%s,\"fw_version\":\"%s\"}}",
+                     current_light ? "true" : "false", FW_VERSION);
+        }
         mqttClient.publish(TDS_TOPIC, payload);
         Serial.printf("Telemetry sent: %s\n", payload);
     }
@@ -108,7 +112,7 @@ static void draw_normal_screen() {
     tft.drawString(hdr, 12, 20, 4);
 
     last_ble_shown = -1;
-    last_tds_shown = -2;
+    last_soil_shown = -999.0f;
     last_light_shown = -1;
     last_wifi_shown = -1;
 }
@@ -121,12 +125,12 @@ static void update_screen() {
         tft.setTextColor(current_ble ? TFT_GREEN : TFT_RED, TFT_BLACK);
         tft.drawString(current_ble ? "BLE: CONNECTED          " : "BLE: SCANNING           ", 12, 65, 4);
     }
-    if (last_tds_shown != current_tds) {
-        last_tds_shown = current_tds;
+    if (fabs(last_soil_shown - current_soil_temp) > 0.05f) {
+        last_soil_shown = current_soil_temp;
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         char buf[32];
-        if (current_tds >= 0) snprintf(buf, sizeof(buf), "TDS: %d ppm            ", current_tds);
-        else snprintf(buf, sizeof(buf), "TDS: waiting BLE       ");
+        if (current_soil_temp > -900.0f) snprintf(buf, sizeof(buf), "Soil: %.1f C (PT100)   ", current_soil_temp);
+        else snprintf(buf, sizeof(buf), "Soil: waiting BLE       ");
         tft.drawString(buf, 12, 105, 4);
     }
     if (last_light_shown != (int8_t)current_light) {
@@ -135,11 +139,11 @@ static void update_screen() {
         uint16_t stroke = current_light ? TFT_GREEN : tft.color565(40, 40, 40);
         uint16_t fg = current_light ? TFT_WHITE : tft.color565(120, 120, 120);
 
-        // LED Button (Left)
+        // Air.Con Button (Left)
         tft.fillRoundRect(12, 138, 142, 40, 6, bg);
         tft.drawRoundRect(12, 138, 142, 40, 6, stroke);
         tft.setTextColor(fg, bg);
-        tft.drawString(current_light ? "LED1: ON" : "LED1: OFF", 32, 148, 4);
+        tft.drawString(current_light ? "Air.Con: ON" : "Air.Con: OFF", 18, 148, 4);
 
         // Check FW Button (Right)
         tft.fillRoundRect(166, 138, 142, 40, 6, tft.color565(15, 35, 90));
@@ -401,10 +405,16 @@ static void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 static void on_ble_notify(NimBLERemoteCharacteristic* pChar, uint8_t* pData, size_t length, bool isNotify) {
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, pData, length);
-    if (!err && doc["tds_ppm"].is<uint16_t>()) {
-        current_tds = doc["tds_ppm"].as<uint16_t>();
-        Serial.printf("BLE TDS received: %d ppm\n", current_tds);
-        send_telemetry();
+    if (!err) {
+        if (doc["soil_temp"].is<float>()) {
+            current_soil_temp = doc["soil_temp"].as<float>();
+            Serial.printf("BLE Soil Temp received: %.1f C\n", current_soil_temp);
+            send_telemetry();
+        } else if (doc["tds_ppm"].is<float>()) {
+            current_soil_temp = doc["tds_ppm"].as<float>();
+            Serial.printf("BLE Soil Temp (fallback): %.1f C\n", current_soil_temp);
+            send_telemetry();
+        }
     }
 }
 
@@ -422,20 +432,20 @@ class ClientCallbacks : public NimBLEClientCallbacks {
 
 static void setup_webserver() {
     server.on("/", HTTP_GET, []() {
-        char tds_str[16];
-        if (current_tds >= 0) snprintf(tds_str, sizeof(tds_str), "%d", current_tds);
-        else snprintf(tds_str, sizeof(tds_str), "waiting");
+        char soil_str[16];
+        if (current_soil_temp > -900.0f) snprintf(soil_str, sizeof(soil_str), "%.1f &deg;C", current_soil_temp);
+        else snprintf(soil_str, sizeof(soil_str), "waiting BLE");
 
         char body[750];
         snprintf(body, sizeof(body),
             "<html><meta name='viewport' content='width=device-width'><h1>ESP2 (Ver %s)</h1>"
-            "<p>TDS: %s ppm</p><p>Light: %s</p><p>BLE: %s</p>"
-            "<form method='post' action='/light?state=%s' style='display:inline;'><button>Toggle light</button></form> "
+            "<p>Soil Temp: %s</p><p>Air.Con: %s</p><p>BLE: %s</p>"
+            "<form method='post' action='/light?state=%s' style='display:inline;'><button>Toggle Air.Con</button></form> "
             "<form method='post' action='/check_fw' style='display:inline;'><button style='background:#2563eb;color:#fff;padding:6px 14px;'>Check for New FW</button></form>"
             "<hr><h3>Local OTA Firmware Upload</h3>"
             "<form method='post' action='/ota' enctype='multipart/form-data'>"
             "<input type='file' name='update'><button>Upload</button></form></html>",
-            FW_VERSION, tds_str, current_light ? "true" : "false", current_ble ? "connected" : "scanning",
+            FW_VERSION, soil_str, current_light ? "true" : "false", current_ble ? "connected" : "scanning",
             current_light ? "false" : "true"
         );
         server.send(200, "text/html", body);
@@ -489,7 +499,7 @@ static void ble_task(void *pvParameters) {
             NimBLEScanResults results = scan->start(2, false);
             for (int i = 0; i < results.getCount(); ++i) {
                 NimBLEAdvertisedDevice dev = results.getDevice(i);
-                if (dev.haveName() && dev.getName().find("ESP3-TDS") != std::string::npos) {
+                if (dev.haveName() && (dev.getName().find("ESP3-TDS") != std::string::npos || dev.getName().find("ESP3-PT100") != std::string::npos || dev.getName().find("ESP3") != std::string::npos)) {
                     if (!bleClient) {
                         bleClient = NimBLEDevice::createClient();
                         bleClient->setClientCallbacks(new ClientCallbacks());
@@ -501,7 +511,7 @@ static void ble_task(void *pvParameters) {
                             if (pRemoteChar && pRemoteChar->canNotify()) {
                                 pRemoteChar->subscribe(true, on_ble_notify);
                                 current_ble = true;
-                                Serial.println("Subscribed to ESP3 TDS notify characteristic");
+                                Serial.println("Subscribed to ESP3 PT100 notify characteristic");
                                 break;
                             }
                         }

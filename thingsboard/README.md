@@ -37,3 +37,29 @@ Dashboard `IoT System Dashboard — Group 3` tích hợp widget điều khiển 
 * Cụm: Minikube (`profile: tb2`), Ingress: `tb-ingress` (namespace `thingboard-dev`).
 * Nginx Reverse Proxy Container: `mega-nginx-minikube-tb2` ánh xạ cổng `28880 -> 80`.
 * Đã cấu hình `client_max_body_size 100M;` trong `/home/justin/dienmega/thingsboard_2/nginx/nginx.conf` và Kubernetes Ingress annotation `nginx.ingress.kubernetes.io/proxy-body-size: "100m"` để giải quyết dứt điểm lỗi `HTTP 413 Request Entity Too Large` khi upload các bản build firmware lớn (> 1MB).
+
+## 4. Cấu hình Chuỗi Quy Tắc Cảnh Báo Ngưỡng Hysteresis (RuleChain T12 & T13)
+Đã cấu hình trực tiếp vào **Root Rule Chain** (`48e0fd00-d678-11f1-9301-8d833790fa1a`):
+* Node trung gian **`Hysteresis Alarm Switch`** (`TbJsSwitchNode`): nhận dữ liệu sau `Save Timeseries`, thực hiện so khớp ngưỡng kèm dải trễ Hysteresis chống chattering/flapping.
+* **Quy tắc và các node hành động tương ứng:**
+  * **Nhiệt độ không khí (ESP1):**
+    * Vượt > 30°C $\rightarrow$ Tạo cảnh báo `Air Temperature High` (CRITICAL).
+    * Giảm về $\le$ 29°C $\rightarrow$ Tự động xóa cảnh báo `Air Temperature High` (Hysteresis 1°C).
+    * Hạ < 24°C $\rightarrow$ Tạo cảnh báo `Air Temperature Low` (WARNING).
+    * Tăng lên $\ge$ 25°C $\rightarrow$ Tự động xóa cảnh báo `Air Temperature Low` (Hysteresis 1°C).
+  * **Độ ẩm không khí (ESP1):**
+    * Vượt > 95% $\rightarrow$ Tạo cảnh báo `Air Humidity High` (CRITICAL).
+    * Giảm về $\le$ 93% $\rightarrow$ Tự động xóa cảnh báo `Air Humidity High` (Hysteresis 2% RH).
+    * Hạ < 80% $\rightarrow$ Tạo cảnh báo `Air Humidity Low` (WARNING).
+    * Tăng lên $\ge$ 82% $\rightarrow$ Tự động xóa cảnh báo `Air Humidity Low` (Hysteresis 2% RH).
+  * **Nhiệt độ giá thể (ESP2 / ESP3):**
+    * Vượt > 32°C $\rightarrow$ Tạo cảnh báo `Soil Temperature High` (CRITICAL).
+    * Giảm về $\le$ 31°C $\rightarrow$ Tự động xóa cảnh báo `Soil Temperature High` (Hysteresis 1°C).
+    * Hạ < 20°C $\rightarrow$ Tạo cảnh báo `Soil Temperature Low` (WARNING).
+    * Tăng lên $\ge$ 21°C $\rightarrow$ Tự động xóa cảnh báo `Soil Temperature Low` (Hysteresis 1°C).
+* **Vòng lặp Điều khiển Tự Động Máy Lạnh (`Air.Con`) trên RuleChain:**
+  * **Kích hoạt làm mát (> 29°C):** Khi nhiệt độ ESP1 vượt quá 29°C, node `Hysteresis Alarm Switch` chuyển sang node `Prepare RPC AirCon ON` $\rightarrow$ chuyển thực thể sang `ESP2` qua node `Change Originator to ESP2` $\rightarrow$ phát RPC hai chiều `set_light: true` qua node `Send AirCon RPC to ESP2`.
+  * **Ngắt làm mát (< 26°C):** Khi nhiệt độ hạ xuống dưới 26°C, chuỗi quy tắc phát RPC `set_light: false` để tắt máy lạnh.
+  * **Dải trễ an toàn (Hysteresis 3°C):** Trong khoảng từ 26°C đến 29°C, trạng thái máy lạnh được giữ nguyên, bảo vệ rơ-le và máy nén làm mát khỏi đóng/ngắt chập chờn.
+* **Giao diện Dashboard:**
+  * Đã tích hợp widget **`🚨 Bảng Cảnh Báo Ngưỡng Hysteresis (CoreIOT Alarms)`** (`alarms_table` thuộc bundle `alarm_widgets`) hiển thị toàn bộ cảnh báo của các thiết bị trong trang trại với đầy đủ tính năng lọc, chi tiết, Acknowledge và Clear.

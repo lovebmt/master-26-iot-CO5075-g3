@@ -498,7 +498,7 @@ void loop() {
         }
     }
 
-    // 3. Sensor sampling every 5 seconds (Real RS485 PT100 with Auto-Fallback to simulation)
+    // 3. Sensor sampling every 5 seconds (Real RS485 PT100 sensor reading)
     if (now - last_sensor_tick >= 5000) {
         last_sensor_tick = now;
 

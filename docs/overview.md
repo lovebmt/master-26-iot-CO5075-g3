@@ -77,21 +77,30 @@ Mỗi người lưu tệp minh chứng và clip gốc trong thư mục chung, gh
 
 ### Điều khiển tự động bằng RuleChain (CoreIOT / ThingsBoard)
 
-Toàn bộ logic tự động được cấu hình trên **RuleChain** của CoreIOT (ThingsBoard). Nhiệt độ không khí lấy từ **ESP1** (DHT20) làm đầu vào cho quy tắc bật/tắt làm mát. Lệnh on/off làm mát được gửi tới **ESP2** để điều khiển thiết bị qua **1 chân I/O**.
+Toàn bộ logic tự động hóa được triển khai hoàn chỉnh trên **Root Rule Chain** của CoreIOT (`48e0fd00-d678-11f1-9301-8d833790fa1a`). Nhiệt độ không khí từ cảm biến **ESP1** (DHT20) được đưa vào chuỗi quy tắc để tự động ra lệnh bật/tắt máy lạnh (hệ thống làm mát) trên **ESP2** thông qua cơ chế RPC hai chiều qua Gateway.
 
-- **Cơ chế chống đóng ngắt liên tục (Hysteresis):** Thiết lập dải trễ 3°C giữa ngưỡng bật (> 29°C) và ngưỡng tắt (< 26°C). Khi nhiệt độ vượt 29°C, làm mát bật và duy trì hoạt động đến khi nhiệt độ hạ hẳn dưới 26°C mới ngắt; ngược lại khi đang tắt, quạt chỉ bật lại khi nhiệt độ vượt quá 29°C, tránh việc relay/thiết bị đóng ngắt liên tục quanh một điểm đặt.
+- **Cơ chế chống đóng ngắt liên tục (Hysteresis):** Thiết lập dải trễ 3°C giữa ngưỡng bật (> 29°C) và ngưỡng tắt (< 26°C). Khi nhiệt độ vượt 29°C, làm mát bật và duy trì hoạt động đến khi nhiệt độ hạ hẳn dưới 26°C mới ngắt; ngược lại khi đang tắt, máy lạnh chỉ bật lại khi nhiệt độ vượt quá 29°C, tránh việc relay/thiết bị đóng ngắt liên tục quanh một điểm đặt.
 
 | Điều kiện | Trạng thái trước đó | Hành động | Thiết bị thực thi |
 |---|---|---|---|
-| Nhiệt độ > 29°C | Đang tắt hoặc chưa bật | Bật làm mát | ESP2 (1 chân I/O) |
-| 26°C ≤ Nhiệt độ ≤ 29°C | Đang chạy hoặc đang tắt | Giữ nguyên trạng thái hiện tại (dải trễ Hysteresis) | ESP2 |
-| Nhiệt độ < 26°C | Đang chạy | Tắt làm mát | ESP2 (1 chân I/O) |
+| Nhiệt độ > 29°C | Đang tắt hoặc chưa bật | Bật làm mát (`Air.Con: ON`) | ESP2 (Relay / GPIO 4) |
+| 26°C ≤ Nhiệt độ ≤ 29°C | Đang chạy hoặc đang tắt | Giữ nguyên trạng thái hiện tại (dải trễ Hysteresis 3°C) | ESP2 |
+| Nhiệt độ < 26°C | Đang chạy | Tắt làm mát (`Air.Con: OFF`) | ESP2 (Relay / GPIO 4) |
 
-- Ở chế độ thủ công, người dùng đặt trạng thái quạt/làm mát từ giao diện. ESP2 công bố chế độ và trạng thái hiện tại để RuleChain chỉ gửi lệnh tự động khi chế độ tự động đang bật.
+- **Luồng truyền lệnh RPC tự động từ RuleChain xuống phần cứng ESP2:**
+  1. Node `Hysteresis Alarm Switch` phát hiện `temperature > 29°C` $\rightarrow$ rẽ nhánh qua quan hệ `AirConOn`.
+  2. Node `Prepare RPC AirCon ON` (`TbTransformMsgNode`) đóng gói payload RPC:
+     ```json
+     {"method": "set_light", "params": {"state": true}}
+     ```
+  3. Node `Change Originator to ESP2` (`TbChangeOriginatorNode`) chuyển thực thể đích sang thiết bị `ESP2`.
+  4. Node `Send AirCon RPC to ESP2` (`TbSendRPCRequestNode`) phát lệnh RPC xuống CoreIOT Gateway.
+  5. Gateway nhận RPC trên topic `v1/gateway/rpc`, định tuyến qua MQTT nội bộ `iot/esp2/command`.
+  6. Vi điều khiển ESP2 nhận lệnh, kích hoạt Relay/LED phần cứng (GPIO 4), cập nhật nút cảm ứng trên màn hình LCD CYD sang **`Air.Con: ON`** và phản hồi trạng thái xác nhận lên CoreIOT.
 
 ### Cảnh báo bằng RuleChain
 
-Các ngưỡng cảnh báo được cấu hình trên RuleChain của CoreIOT. Để tránh việc phát sinh và xóa cảnh báo liên tục (alarm flapping / chattering) khi số đo dao động sát ngưỡng, RuleChain áp dụng **ngưỡng trễ Hysteresis** cho điều kiện tạo (Create Alarm) và xóa cảnh báo (Clear Alarm).
+Các ngưỡng cảnh báo môi trường được cấu hình trực tiếp trên Root Rule Chain của CoreIOT. Để tránh việc phát sinh và xóa cảnh báo liên tục (alarm flapping / chattering) khi số đo dao động sát ngưỡng, RuleChain áp dụng **ngưỡng trễ Hysteresis** cho điều kiện tạo (Create Alarm) và xóa cảnh báo (Clear Alarm).
 
 | Thông số | Nguồn | Bình thường (ví dụ) | Kích hoạt cảnh báo thấp | Xóa cảnh báo thấp (Clear) | Kích hoạt cảnh báo cao | Xóa cảnh báo cao (Clear) | Dải trễ (Hysteresis) |
 |---|---|---|---|---|---|---|---|
@@ -101,9 +110,48 @@ Các ngưỡng cảnh báo được cấu hình trên RuleChain của CoreIOT. �
 
 - **Nguyên lý hoạt động:** Cảnh báo chỉ được kích hoạt khi vượt qua ngưỡng báo động và chỉ tự động giải phóng (Clear Alarm) khi giá trị đã quay trở lại vùng an toàn vượt qua bước trễ Hysteresis tương ứng.
 
-### Điều khiển đèn
+#### Sơ đồ Kiến trúc Root Rule Chain CoreIOT (24 Rule Nodes)
 
-Đèn chỉ hỗ trợ điều khiển bật/tắt (on/off) thông thường trên **ESP2**, không áp dụng quy tắc tự động.
+```mermaid
+flowchart TD
+    TS["Save Timeseries Node"] --> SW["Hysteresis Alarm Switch Node<br/>(TbJsSwitchNode)"]
+
+    subgraph ALARM_HIGH["Nhánh Cảnh Báo Ngưỡng Cao (High Thresholds)"]
+        SW -->|AirTempHigh| C_ATH["Create Air Temp High<br/>(CRITICAL: > 30°C)"]
+        SW -->|ClearAirTempHigh| CL_ATH["Clear Air Temp High<br/>(<= 29°C)"]
+        SW -->|AirHumiHigh| C_AHH["Create Air Humi High<br/>(CRITICAL: > 95%)"]
+        SW -->|ClearAirHumiHigh| CL_AHH["Clear Air Humi High<br/>(<= 93%)"]
+        SW -->|SoilTempHigh| C_STH["Create Soil Temp High<br/>(CRITICAL: > 32°C)"]
+        SW -->|ClearSoilTempHigh| CL_STH["Clear Soil Temp High<br/>(<= 31°C)"]
+    end
+
+    subgraph ALARM_LOW["Nhánh Cảnh Báo Ngưỡng Thấp (Low Thresholds)"]
+        SW -->|AirTempLow| C_ATL["Create Air Temp Low<br/>(WARNING: < 24°C)"]
+        SW -->|ClearAirTempLow| CL_ATL["Clear Air Temp Low<br/>(>= 25°C)"]
+        SW -->|AirHumiLow| C_AHL["Create Air Humi Low<br/>(WARNING: < 80%)"]
+        SW -->|ClearAirHumiLow| CL_AHL["Clear Air Humi Low<br/>(>= 82%)"]
+        SW -->|SoilTempLow| C_STL["Create Soil Temp Low<br/>(WARNING: < 20°C)"]
+        SW -->|ClearSoilTempLow| CL_STL["Clear Soil Temp Low<br/>(>= 21°C)"]
+    end
+
+    subgraph AIRCON_RPC["Nhánh Điều Khiển Tự Động Máy Lạnh (Air.Con RPC Loop)"]
+        SW -->|AirConOn| RPC_ON["Prepare RPC AirCon ON<br/>(set_light: true, > 29°C)"]
+        SW -->|AirConOff| RPC_OFF["Prepare RPC AirCon OFF<br/>(set_light: false, < 26°C)"]
+        RPC_ON --> ORIG["Change Originator to ESP2<br/>(TbChangeOriginatorNode)"]
+        RPC_OFF --> ORIG
+        ORIG --> SEND_RPC["Send AirCon RPC to ESP2<br/>(TbSendRPCRequestNode)"]
+    end
+
+    SEND_RPC -->|v1/gateway/rpc| GW["PC Gateway"]
+    GW -->|iot/esp2/command| ESP2["ESP2 Hardware (CYD LCD)<br/>- Kích hoạt Relay/LED (GPIO 4)<br/>- Nút hiển thị Air.Con: ON/OFF"]
+```
+
+#### Giám sát trên Bảng Điều Khiển CoreIOT (Dashboard Widget)
+- Tích hợp widget **`🚨 Bảng Cảnh Báo Ngưỡng Hysteresis (CoreIOT Alarms)`** (`alarms_table` thuộc bundle `alarm_widgets`) hiển thị toàn bộ cảnh báo của các thiết bị trong trang trại với đầy đủ tính năng lọc, hiển thị mức độ nghiêm trọng (*WARNING / CRITICAL*), chi tiết số đo và hỗ trợ thao tác xác nhận (Acknowledge) / giải phóng (Clear).
+
+### Điều khiển máy lạnh / hệ thống làm mát (Air Conditioner)
+
+Nút cảm ứng trên màn hình LCD CYD của ESP2 (`Air.Con: ON/OFF`), giao diện web nội bộ `:8080`, và lệnh RPC `set_light` từ CoreIOT điều khiển bật/tắt máy lạnh (Air Conditioner / hệ thống làm mát) gắn vào ESP2 qua relay (GPIO 4 / LED). Trạng thái máy lạnh được đồng bộ hai chiều giữa LCD, Webserver, Gateway và CoreIOT Dashboard.
 
 ### OTA và Cập nhật Firmware
 
@@ -112,7 +160,7 @@ Chức năng cập nhật firmware qua mạng (OTA) được triển khai trên 
 #### 1. Ánh xạ Device Profile trên CoreIOT / ThingsBoard
 Gateway đăng ký và kết nối các thiết bị xuống CoreIOT (`v1/gateway/connect`) theo đúng profile tương ứng:
 * **ESP1**: Device name `ESP1`, Profile **`esp_temp_humi`** (Cảm biến nhiệt độ, độ ẩm qua I²C).
-* **ESP2**: Device name `ESP2`, Profile **`esp_hub`** (Hub trung tâm, màn hình hiển thị, điều khiển đèn/quạt, nhận BLE).
+* **ESP2**: Device name `ESP2`, Profile **`esp_hub`** (Hub trung tâm, màn hình hiển thị CYD, điều khiển máy lạnh Air.Con, nhận nhiệt độ đất PT100 qua BLE).
 * **ESP3**: Device name `ESP3`, Profile **`esp_ble`** (Cảm biến đo truyền qua BLE/Modbus).
 
 #### 2. Vị trí file nhị phân Firmware (`.bin`) và Kho OTA CoreIOT

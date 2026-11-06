@@ -115,6 +115,130 @@
           },
           "title": "ESP2 Firmware OTA Management"
         }
+      },
+      "alarm-table-widget-group3": {
+        "type": "alarm",
+        "sizeX": 24,
+        "sizeY": 6,
+        "config": {
+          "timewindow": {
+            "realtime": {
+              "interval": 1000,
+              "timewindowMs": 86400000
+            },
+            "aggregation": {
+              "type": "NONE",
+              "limit": 200
+            }
+          },
+          "showTitle": true,
+          "backgroundColor": "rgb(255, 255, 255)",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "4px",
+          "settings": {
+            "enableSelection": true,
+            "enableSearch": true,
+            "displayDetails": true,
+            "allowAcknowledgment": true,
+            "allowClear": true,
+            "allowAssign": true,
+            "displayActivity": true,
+            "displayPagination": true,
+            "defaultPageSize": 10,
+            "defaultSortOrder": "-createdTime",
+            "enableSelectColumnDisplay": true,
+            "enableStickyAction": false,
+            "enableFilter": true,
+            "entitiesTitle": null,
+            "alarmsTitle": "B\u1ea3ng Theo D\u00f5i C\u1ea3nh B\u00e1o Ng\u01b0\u1ee1ng (Hysteresis Alarms)"
+          },
+          "title": "\ud83d\udea8 B\u1ea3ng C\u1ea3nh B\u00e1o Ng\u01b0\u1ee1ng Hysteresis (CoreIOT Alarms)",
+          "dropShadow": true,
+          "enableFullscreen": true,
+          "titleStyle": {
+            "fontSize": "16px",
+            "fontWeight": 600,
+            "padding": "5px 10px"
+          },
+          "useDashboardTimewindow": false,
+          "showLegend": false,
+          "alarmSource": {
+            "type": "entity",
+            "entityAliasId": "all-farm-devices-alias-id",
+            "name": "alarms",
+            "dataKeys": [
+              {
+                "name": "createdTime",
+                "type": "alarm",
+                "label": "Th\u1eddi gian t\u1ea1o",
+                "color": "#2196f3",
+                "settings": {
+                  "useCellStyleFunction": false,
+                  "useCellContentFunction": false
+                }
+              },
+              {
+                "name": "originator",
+                "type": "alarm",
+                "label": "Thi\u1ebft b\u1ecb",
+                "color": "#4caf50",
+                "settings": {
+                  "useCellStyleFunction": false,
+                  "useCellContentFunction": false
+                }
+              },
+              {
+                "name": "type",
+                "type": "alarm",
+                "label": "Lo\u1ea1i c\u1ea3nh b\u00e1o",
+                "color": "#f44336",
+                "settings": {
+                  "useCellStyleFunction": false,
+                  "useCellContentFunction": false
+                }
+              },
+              {
+                "name": "severity",
+                "type": "alarm",
+                "label": "M\u1ee9c \u0111\u1ed9",
+                "color": "#ff9800",
+                "settings": {
+                  "useCellStyleFunction": false,
+                  "useCellContentFunction": false
+                }
+              },
+              {
+                "name": "status",
+                "type": "alarm",
+                "label": "Tr\u1ea1ng th\u00e1i",
+                "color": "#607d8b",
+                "settings": {
+                  "useCellStyleFunction": false,
+                  "useCellContentFunction": false
+                }
+              }
+            ]
+          },
+          "alarmSearchStatus": "ANY",
+          "alarmsPollingInterval": 5,
+          "showTitleIcon": true,
+          "titleIcon": "warning",
+          "iconColor": "#d32f2f",
+          "iconSize": "24px",
+          "titleTooltip": "Gi\u00e1m s\u00e1t c\u1ea3nh b\u00e1o nhi\u1ec7t \u0111\u1ed9, \u0111\u1ed9 \u1ea9m kh\u00f4ng kh\u00ed v\u00e0 nhi\u1ec7t \u0111\u1ed9 gi\u00e1 th\u1ec3",
+          "widgetStyle": {},
+          "displayTimewindow": true,
+          "actions": {},
+          "alarmStatusList": [],
+          "alarmSeverityList": [],
+          "alarmTypeList": [],
+          "searchPropagatedAlarms": false,
+          "configMode": "basic",
+          "alarmFilterConfig": null
+        },
+        "id": "alarm-table-widget-group3",
+        "typeAlias": "alarms_table",
+        "bundleAlias": "alarm_widgets"
       }
     },
     "states": {
@@ -141,6 +265,12 @@
                 "col": 8,
                 "sizeX": 16,
                 "sizeY": 5
+              },
+              "alarm-table-widget-group3": {
+                "row": 10,
+                "col": 0,
+                "sizeX": 24,
+                "sizeY": 6
               }
             },
             "gridSettings": {
@@ -186,6 +316,19 @@
             "id": "5fa8f7f0-d7e9-11f1-9301-8d833790fa1b"
           }
         }
+      },
+      "all-farm-devices-alias-id": {
+        "id": "all-farm-devices-alias-id",
+        "alias": "All Farm Devices",
+        "filter": {
+          "type": "entityList",
+          "entityType": "DEVICE",
+          "entityList": [
+            "4fb8f7f0-d7e9-11f1-9301-8d833790fa1a",
+            "cf2cd650-d7e9-11f1-9301-8d833790fa1a",
+            "5fa8f7f0-d7e9-11f1-9301-8d833790fa1b"
+          ]
+        }
       }
     },
     "timewindow": {
@@ -221,6 +364,6 @@
     "id": "48cd26e0-d678-11f1-9301-8d833790fa1a"
   },
   "assignedCustomers": null,
-  "version": 10,
+  "version": 12,
   "externalId": null
 }

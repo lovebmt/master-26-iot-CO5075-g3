@@ -69,7 +69,9 @@ fn parse_at(
                     .ok_or_else(|| anyhow!("{key} must be a finite non-negative number"))?;
                 normalized.insert(key.clone(), value.clone());
             }
-            ("esp2", "soil_temp")
+            ("esp1", "temperature")
+            | ("esp1", "temp")
+            | ("esp2", "soil_temp")
             | ("esp2", "soil_temp_c")
             | ("esp3", "soil_temp")
             | ("esp3", "soil_temp_c") => {
@@ -77,6 +79,14 @@ fn parse_at(
                     .as_f64()
                     .filter(|number| number.is_finite() && *number >= -50.0 && *number <= 150.0)
                     .ok_or_else(|| anyhow!("{key} must be a finite temperature"))?;
+                normalized.insert(key.clone(), value.clone());
+            }
+            ("esp1", "humidity")
+            | ("esp1", "humi") => {
+                value
+                    .as_f64()
+                    .filter(|number| number.is_finite() && *number >= 0.0 && *number <= 100.0)
+                    .ok_or_else(|| anyhow!("{key} must be a valid humidity"))?;
                 normalized.insert(key.clone(), value.clone());
             }
             ("esp2", "light_on") if value.is_boolean() => {

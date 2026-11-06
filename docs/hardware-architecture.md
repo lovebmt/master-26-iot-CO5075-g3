@@ -8,10 +8,10 @@ ESP1 — CO₂ node
   Wi-Fi + MQTT → local MQTT broker / PC Gateway
   Custom webserver (T07; shared rubric item with ESP2) 
 
-ESP2 — BLE central / display / light node
+ESP2 — BLE central / display / air conditioner control node
   BLE central: receives soil temperature data over NUS from ESP3
-  TFT LCD display (ILI9341)
-  Light control
+  TFT LCD display (ILI9341) with touch UI: shows soil temperature (PT100) and Air.Con status
+  Air conditioner (máy lạnh / hệ thống làm mát) control via relay (GPIO 4)
   Wi-Fi + MQTT → local MQTT broker / PC Gateway
   Custom webserver (T07; shared rubric item with ESP1)
   OTA firmware update (T14)
@@ -56,7 +56,7 @@ Rubric scores are earned only for completed features with report/demo evidence. 
 
 1. ESP1 reads CO₂ over I²C and publishes measurements to local MQTT over Wi-Fi.
 2. ESP3 reads soil temperature over Modbus RS485 (PT100) and sends measurements to ESP2 over BLE NUS.
-3. ESP2 displays received soil temperature and local/system status on TFT LCD, controls the light, and publishes received soil temperature data and its own telemetry to local MQTT over Wi-Fi.
+3. ESP2 displays received soil temperature and local/system status on TFT LCD, controls the air conditioner (máy lạnh / hệ thống làm mát) via relay, and publishes received soil temperature data and its own telemetry to local MQTT over Wi-Fi.
 4. The PC Gateway aggregates both streams, updates its local dashboard, and forwards telemetry to CoreIOT.
 5. Commands from CoreIOT return through the Gateway and MQTT to the relevant ESP node.
 6. The Gateway performs OTA for ESP2 (T14), if supported by the selected firmware/update mechanism.
