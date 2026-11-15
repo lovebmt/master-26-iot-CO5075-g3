@@ -21,7 +21,7 @@
 // ==========================================
 // WiFi & MQTT Fallback Configuration
 // ==========================================
-#define MQTT_TOPIC_ESP2 "iot/esp2/telemetry"
+#define MQTT_TOPIC_ESP3 "iot/esp3/telemetry"
 #define MQTT_BROKER "192.168.1.19"
 #define MQTT_PORT 1883
 
@@ -94,8 +94,8 @@ static void send_mqtt_telemetry(float temp, uint16_t tds) {
       char payload[96];
       snprintf(payload, sizeof(payload),
                "{\"values\":{\"soil_temp\":%.1f,\"tds_ppm\":%u}}", temp, tds);
-      mqttClient.publish(MQTT_TOPIC_ESP2, payload);
-      Serial.printf("[MQTT FALLBACK] Sent to %s: %s\n", MQTT_TOPIC_ESP2,
+      mqttClient.publish(MQTT_TOPIC_ESP3, payload);
+      Serial.printf("[MQTT FALLBACK] Sent to %s: %s\n", MQTT_TOPIC_ESP3,
                     payload);
     } else {
       Serial.println("[MQTT] Connect failed");
