@@ -54,7 +54,6 @@ static bool active_fallback_mqtt = false;
 static uint32_t ble_unconnected_start = 0;
 
 static float current_soil_temp = 25.0f;
-static uint16_t current_tds = 530;
 static uint32_t last_sensor_tick = 0;
 
 // BLE Server Callbacks
@@ -73,7 +72,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
   }
 };
 
-static void send_mqtt_telemetry(float temp, uint16_t tds) {
+static void send_mqtt_telemetry(float temp) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.printf("[WIFI] Connecting to %s...\n", wifi_ssid);
     WiFi.begin(wifi_ssid, wifi_pass);
@@ -93,7 +92,7 @@ static void send_mqtt_telemetry(float temp, uint16_t tds) {
     if (mqttClient.connected()) {
       char payload[96];
       snprintf(payload, sizeof(payload),
-               "{\"values\":{\"soil_temp\":%.1f,\"tds_ppm\":%u}}", temp, tds);
+               "{\"values\":{\"soil_temp\":%.1f}}", temp);
       mqttClient.publish(MQTT_TOPIC_ESP3, payload);
       Serial.printf("[MQTT FALLBACK] Sent to %s: %s\n", MQTT_TOPIC_ESP3,
                     payload);
@@ -147,10 +146,9 @@ static bool read_rs485_pt100(float &temperature, float &resistance) {
   }
 }
 
-static void send_sensor_data(float temp, uint16_t tds) {
+static void send_sensor_data(float temp) {
   char payload[64];
-  snprintf(payload, sizeof(payload), "{\"soil_temp\":%.1f,\"tds_ppm\":%u}",
-           temp, tds);
+  snprintf(payload, sizeof(payload), "{\"soil_temp\":%.1f}", temp);
 
   bool should_mqtt = false;
   if (current_mode == MODE_MQTT_ONLY) {
@@ -172,7 +170,7 @@ static void send_sensor_data(float temp, uint16_t tds) {
   }
 
   if (should_mqtt) {
-    send_mqtt_telemetry(temp, tds);
+    send_mqtt_telemetry(temp);
   }
 }
 
@@ -253,7 +251,7 @@ void loop() {
     }
 
     // Send telemetry (BLE or WiFi fallback)
-    send_sensor_data(current_soil_temp, current_tds);
+    send_sensor_data(current_soil_temp);
   }
 
   delay(20);
