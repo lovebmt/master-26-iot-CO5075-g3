@@ -160,7 +160,7 @@ mod tests {
             (
                 "unknown measurement",
                 "esp1",
-                br#"{"values":{"humidity":1}}"#,
+                br#"{"values":{"lux":1}}"#,
             ),
             ("missing values", "esp1", br#"{"ts":1}"#),
             ("empty values", "esp1", br#"{"values":{}}"#),

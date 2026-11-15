@@ -71,6 +71,7 @@ def main():
     print(f"[CoreIOT Sync] Successfully cached {len(bin_data):,} bytes to {dest_bin}")
 
     # 4. Generate version.json dynamically from CoreIOT metadata
+    gw_ip = os.environ.get("GATEWAY_IP", "192.168.137.230")
     vinfo = {
         "version": target_ver,
         "package_id": pkg_id,
@@ -79,7 +80,7 @@ def main():
         "checksum": matched.get("checksum"),
         "checksum_algorithm": matched.get("checksumAlgorithm"),
         "source": "CoreIOT OTA Package Repository",
-        "url": "http://192.168.1.19:8080/firmware/esp2.bin"
+        "url": f"http://{gw_ip}:8080/firmware/esp2.bin"
     }
     with open(version_json_path, "w") as f:
         json.dump(vinfo, f, indent=2)

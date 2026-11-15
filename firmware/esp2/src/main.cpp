@@ -12,6 +12,9 @@
 #include <ArduinoJson.h>
 
 #define FW_VERSION   "1.0.3"
+#define WIFI_SSID    "AAMM_"
+#define WIFI_PASS    "11111111"
+#define GATEWAY_HOST "192.168.137.230"
 #define TDS_TOPIC    "iot/esp2/telemetry"
 #define CMD_TOPIC    "iot/esp2/command"
 #define RESULT_TOPIC "iot/esp2/result"
@@ -337,7 +340,7 @@ static void check_new_firmware() {
     Serial.println("Checking for new firmware from server...");
 
     HTTPClient http;
-    http.begin("http://192.168.1.19:8080/firmware/version.json");
+    http.begin("http://" GATEWAY_HOST ":8080/firmware/version.json");
     http.setTimeout(3500);
     int code = http.GET();
     if (code == HTTP_CODE_OK) {
@@ -346,7 +349,7 @@ static void check_new_firmware() {
         DeserializationError err = deserializeJson(doc, payload);
         if (!err) {
             const char* ver = doc["version"] | "";
-            const char* url = doc["url"] | "http://192.168.1.19:8080/firmware/esp2.bin";
+            const char* url = doc["url"] | "http://" GATEWAY_HOST ":8080/firmware/esp2.bin";
             Serial.printf("Server FW version: %s (Current: %s)\n", ver, FW_VERSION);
             if (strlen(ver) > 0 && strcmp(ver, FW_VERSION) != 0) {
                 trigger_ota(url, ver, false);
@@ -387,7 +390,7 @@ static void mqtt_callback(char* topic, byte* payload, unsigned int length) {
         mqttClient.publish(RESULT_TOPIC, out);
         Serial.printf("MQTT set_light -> %s, replied ID=%s\n", state ? "ON" : "OFF", id);
     } else if (method && (strcmp(method, "ota_update") == 0 || strcmp(method, "set_firmware") == 0)) {
-        const char* url = doc["params"]["url"] | "http://192.168.1.19:8080/firmware/esp2.bin";
+        const char* url = doc["params"]["url"] | "http://" GATEWAY_HOST ":8080/firmware/esp2.bin";
         const char* ver = doc["params"]["version"] | "v1.0.1";
         bool force = doc["params"]["force"] | false;
 
@@ -549,7 +552,7 @@ void setup() {
 
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
-    WiFi.begin("Fuvitech", "fuvitech.vn");
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
     Serial.print("Connecting to Wi-Fi");
     uint32_t t0 = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - t0 < 8000) {
@@ -564,7 +567,7 @@ void setup() {
         Serial.println("Wi-Fi not ready yet; will auto-reconnect in loop");
     }
 
-    const char* broker = "192.168.1.19";
+    const char* broker = GATEWAY_HOST;
     mqttClient.setServer(broker, 1883);
     mqttClient.setCallback(mqtt_callback);
 
@@ -639,7 +642,7 @@ void loop() {
             last_wifi_try = millis();
             Serial.println("Reconnecting Wi-Fi...");
             WiFi.disconnect();
-            WiFi.begin("Fuvitech", "fuvitech.vn");
+            WiFi.begin(WIFI_SSID, WIFI_PASS);
         }
     } else {
         if (!mqttClient.connected()) {

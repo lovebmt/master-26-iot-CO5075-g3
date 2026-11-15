@@ -190,7 +190,7 @@ async fn trigger_ota_post(
         "id": cid,
         "method": "ota_update",
         "params": {
-            "url": "http://192.168.1.19:8080/firmware/esp2.bin",
+            "url": crate::config::default_firmware_url(),
             "version": "v1.0.1",
             "force": force
         }
@@ -240,6 +240,7 @@ async fn serve_firmware() -> Response {
 }
 
 async fn serve_firmware_version() -> Response {
+    let default_url = crate::config::default_firmware_url();
     let paths = [
         "gateway/firmware/version.json",
         "firmware/version.json",
@@ -247,6 +248,15 @@ async fn serve_firmware_version() -> Response {
     ];
     for p in &paths {
         if let Ok(content) = tokio::fs::read_to_string(p).await {
+            if let Ok(mut doc) = serde_json::from_str::<serde_json::Value>(&content) {
+                doc["url"] = serde_json::Value::String(default_url);
+                return (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "application/json")],
+                    doc.to_string(),
+                )
+                    .into_response();
+            }
             return (
                 StatusCode::OK,
                 [(header::CONTENT_TYPE, "application/json")],
@@ -257,7 +267,7 @@ async fn serve_firmware_version() -> Response {
     }
     let payload = serde_json::json!({
         "version": "1.0.4",
-        "url": "http://192.168.1.19:8080/firmware/esp2.bin"
+        "url": default_url
     });
     (
         StatusCode::OK,
