@@ -1,4 +1,11 @@
-use std::str::FromStr;
+use std::{
+    collections::HashMap,
+    str::FromStr,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
+};
 
 use anyhow::Result;
 use serde::Serialize;
@@ -28,9 +35,16 @@ pub struct OutboxEntry {
     pub last_error: Option<String>,
 }
 
+struct DeviceWindow {
+    start_ms: i64,
+    samples: Vec<(u64, serde_json::Map<String, serde_json::Value>)>,
+}
+
 #[derive(Clone)]
 pub struct Store {
     pool: SqlitePool,
+    agg_window_secs: Arc<AtomicU64>,
+    agg_buffer: Arc<Mutex<HashMap<String, DeviceWindow>>>,
 }
 
 impl Store {
@@ -38,7 +52,87 @@ impl Store {
         let options = SqliteConnectOptions::from_str(database_url)?.create_if_missing(true);
         let pool = SqlitePoolOptions::new().max_connections(1).connect_with(options).await?;
         sqlx::migrate!("./migrations").run(&pool).await?;
-        Ok(Self { pool })
+        let agg_secs = std::env::var("AGGREGATION_WINDOW_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10);
+        Ok(Self {
+            pool,
+            agg_window_secs: Arc::new(AtomicU64::new(agg_secs)),
+            agg_buffer: Arc::new(Mutex::new(HashMap::new())),
+        })
+    }
+
+    pub fn get_aggregation_window(&self) -> u64 {
+        self.agg_window_secs.load(Ordering::Relaxed)
+    }
+
+    pub fn set_aggregation_window(&self, secs: u64) {
+        self.agg_window_secs.store(secs, Ordering::Relaxed);
+        if secs == 0 {
+            if let Ok(mut buf) = self.agg_buffer.lock() {
+                buf.clear();
+            }
+        }
+    }
+
+    // ponytail: in-memory aggregation flushes on incoming telemetry ticks; add background timer if sensor halts while buffer has pending samples.
+    fn aggregate_sample(
+        &self,
+        device_id: &str,
+        now_ms: i64,
+        ts_ms: u64,
+        values: &serde_json::Map<String, serde_json::Value>,
+        window_secs: u64,
+    ) -> Option<String> {
+        let mut buf = self.agg_buffer.lock().ok()?;
+        let window = buf.entry(device_id.to_string()).or_insert_with(|| DeviceWindow {
+            start_ms: now_ms,
+            samples: Vec::new(),
+        });
+        window.samples.push((ts_ms, values.clone()));
+
+        let elapsed = now_ms.saturating_sub(window.start_ms);
+        if elapsed >= (window_secs as i64) * 1000 {
+            let count = window.samples.len();
+            let last_ts = window.samples.last().map(|s| s.0).unwrap_or(ts_ms);
+            let mut agg_map = serde_json::Map::new();
+            let mut num_sums: HashMap<String, (f64, usize)> = HashMap::new();
+
+            for (_s_ts, s_vals) in &window.samples {
+                for (k, v) in s_vals {
+                    if let Some(n) = v.as_f64() {
+                        let entry = num_sums.entry(k.clone()).or_insert((0.0, 0));
+                        entry.0 += n;
+                        entry.1 += 1;
+                    } else {
+                        agg_map.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+            for (k, (sum, c)) in num_sums {
+                if c > 0 {
+                    let avg = ((sum / c as f64) * 100.0).round() / 100.0;
+                    agg_map.insert(k, serde_json::json!(avg));
+                }
+            }
+            agg_map.insert("samples_count".into(), serde_json::json!(count));
+
+            #[derive(Serialize)]
+            struct AggPayload<'a> {
+                ts: u64,
+                values: &'a serde_json::Map<String, serde_json::Value>,
+            }
+            let out_json = serde_json::to_string(&AggPayload {
+                ts: last_ts,
+                values: &agg_map,
+            })
+            .ok();
+            buf.remove(device_id);
+            out_json
+        } else {
+            None
+        }
     }
 
     pub async fn save_telemetry(&self, item: &NormalizedTelemetry, received_at_ms: i64) -> Result<()> {
@@ -52,9 +146,17 @@ impl Store {
         sqlx::query("INSERT INTO device_state (device_id, thingsboard_name, payload_json, last_seen_ms) VALUES (?, ?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET thingsboard_name = excluded.thingsboard_name, payload_json = excluded.payload_json, last_seen_ms = excluded.last_seen_ms")
             .bind(&item.device_id).bind(&item.thingsboard_name).bind(&payload_json)
             .bind(received_at_ms).execute(&mut *tx).await?;
-        sqlx::query("INSERT INTO telemetry_outbox (device_id, payload_json, created_at_ms, next_attempt_ms) VALUES (?, ?, ?, ?)")
-            .bind(&item.device_id).bind(&payload_json).bind(received_at_ms).bind(received_at_ms)
-            .execute(&mut *tx).await?;
+        let window_secs = self.get_aggregation_window();
+        let to_enqueue: Option<String> = if window_secs == 0 {
+            Some(payload_json)
+        } else {
+            self.aggregate_sample(&item.device_id, received_at_ms, item.timestamp_ms, &item.values, window_secs)
+        };
+        if let Some(outbox_payload) = to_enqueue {
+            sqlx::query("INSERT INTO telemetry_outbox (device_id, payload_json, created_at_ms, next_attempt_ms) VALUES (?, ?, ?, ?)")
+                .bind(&item.device_id).bind(&outbox_payload).bind(received_at_ms).bind(received_at_ms)
+                .execute(&mut *tx).await?;
+        }
         for (key, val) in &item.values {
             let num_val = if let Some(n) = val.as_f64() {
                 Some(n)
@@ -129,7 +231,9 @@ mod tests {
     use serde_json::{json, Map};
 
     async fn store() -> Store {
-        Store::connect("sqlite::memory:").await.unwrap()
+        let s = Store::connect("sqlite::memory:").await.unwrap();
+        s.set_aggregation_window(0);
+        s
     }
 
     fn sample(device_id: &str, timestamp_ms: u64, value: i64) -> NormalizedTelemetry {
@@ -232,5 +336,25 @@ mod tests {
         assert_eq!(pts.len(), 2);
         assert_eq!(pts[0], (100, 620.0));
         assert_eq!(pts[1], (200, 750.0));
+    }
+
+    #[tokio::test]
+    async fn aggregates_telemetry_over_configured_window() {
+        let store = Store::connect("sqlite::memory:").await.unwrap();
+        store.set_aggregation_window(10);
+
+        store.save_telemetry(&sample("esp1", 1_000, 100), 1_000).await.unwrap();
+        assert_eq!(store.pending(i64::MAX, 10).await.unwrap().len(), 0);
+
+        store.save_telemetry(&sample("esp1", 6_000, 200), 6_000).await.unwrap();
+        assert_eq!(store.pending(i64::MAX, 10).await.unwrap().len(), 0);
+
+        store.save_telemetry(&sample("esp1", 11_500, 300), 11_500).await.unwrap();
+        let pending = store.pending(i64::MAX, 10).await.unwrap();
+        assert_eq!(pending.len(), 1);
+
+        let parsed: serde_json::Value = serde_json::from_str(&pending[0].payload_json).unwrap();
+        assert_eq!(parsed["values"]["co2_ppm"], 200.0);
+        assert_eq!(parsed["values"]["samples_count"], 3);
     }
 }

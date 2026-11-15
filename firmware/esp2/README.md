@@ -11,7 +11,7 @@ Firmware C/C++ (Arduino framework) cho bo mạch **ESP32-2432S028R** (ESP32 tíc
   * Chạm ô bên trái: Bật/tắt máy lạnh tại chỗ (`Air.Con: ON` / `Air.Con: OFF`).
   * Chạm ô bên phải: **`CHECK FW`** để chủ động kiểm tra phiên bản mới từ Gateway.
   * Hộp thoại OTA Prompt: Nút cảm ứng **`YES`** (xanh) để nạp OTA, **`NO`** (đỏ) để hủy.
-* **Đèn LED báo trạng thái / Relay máy lạnh:** Active-Low (GPIO 4, 16, 17) đóng vai trò rơ-le kích hoạt hệ thống làm mát / máy lạnh.
+* **Đèn LED báo trạng thái / Relay máy lạnh:** Điều khiển qua chân **`GPIO 27`** (cổng cắm CN1) đóng vai trò rơ-le kích hoạt hệ thống làm mát / máy lạnh (Active-High: `HIGH` = Bật, `LOW` = Tắt). Cụm LED RGB onboard (GPIO 4, 16, 17) được giữ tắt mặc định.
 * **Wi-Fi & Fallback AP:** Tự động kết nối Wi-Fi hoặc mở AP `ESP2-Setup` (192.168.4.1).
 * **MQTT:** Telemetry `iot/esp2/telemetry` (kèm `soil_temp`, `light_on`, `fw_version`), Command `iot/esp2/command`, Result `iot/esp2/result`.
 * **Web Server & OTA (Port 8080):**

@@ -6,7 +6,7 @@ use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 
 use crate::{config::DeviceConfig, store::Store, telemetry};
 
-const TOPICS: [&str; 3] = ["iot/esp1/telemetry", "iot/esp2/telemetry", "iot/esp3/telemetry"];
+const TOPICS: [&str; 4] = ["iot/esp1/telemetry", "iot/esp2/telemetry", "iot/esp3/telemetry", "tele/+/SENSOR"];
 
 pub struct LocalMqtt {
     task: JoinHandle<()>,
@@ -50,8 +50,15 @@ impl LocalMqtt {
                             "iot/esp1/telemetry" => Some("esp1"),
                             "iot/esp2/telemetry" => Some("esp2"),
                             "iot/esp3/telemetry" => Some("esp3"),
+                            t if t.starts_with("tele/") && t.ends_with("/SENSOR") => Some("esp1"),
                             _ => None,
                         }) else { continue };
+                        let payload_str = String::from_utf8_lossy(&message.payload);
+                        tracing::info!(
+                            topic = %message.topic,
+                            payload = %payload_str,
+                            "[Local MQTT RX] Ingested raw message from broker"
+                        );
                         let received_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
                             Ok(duration) => duration.as_millis().try_into().unwrap_or(i64::MAX),
                             Err(_) => {
@@ -61,11 +68,23 @@ impl LocalMqtt {
                         };
                         match telemetry::parse(device_id, &message.payload, &devices) {
                             Ok(item) => {
+                                let val_str = serde_json::to_string(&item.values).unwrap_or_default();
+                                tracing::info!(
+                                    device = %item.device_id,
+                                    tb_name = %item.thingsboard_name,
+                                    values = %val_str,
+                                    "[Telemetry Processed] Normalized & stored into local outbox"
+                                );
                                 if let Err(error) = store.save_telemetry(&item, received_at_ms).await {
                                     tracing::warn!(topic = %message.topic, reason = %error, "failed to store local MQTT telemetry");
                                 }
                             }
-                            Err(error) => tracing::warn!(topic = %message.topic, reason = %error, "discarding malformed local MQTT telemetry"),
+                            Err(error) => tracing::warn!(
+                                topic = %message.topic,
+                                payload = %payload_str,
+                                reason = %error,
+                                "[Telemetry Discarded] Malformed local MQTT telemetry"
+                            ),
                         }
                     }
                     Ok(_) => {}

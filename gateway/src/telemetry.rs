@@ -49,10 +49,22 @@ fn parse_at(
             .filter(|timestamp| *timestamp <= i64::MAX as u64)
             .ok_or_else(|| anyhow!("ts must fit a non-negative SQLite integer"))?,
     };
-    let values = object
-        .get("values")
-        .and_then(Value::as_object)
-        .ok_or_else(|| anyhow!("values must be an object"))?;
+    let values_fallback;
+    let values = if let Some(v) = object.get("values").and_then(Value::as_object) {
+        v
+    } else if let Some(dht) = object.get("DHT20").and_then(Value::as_object) {
+        let mut map = Map::new();
+        if let Some(t) = dht.get("Temperature") {
+            map.insert("temperature".to_string(), t.clone());
+        }
+        if let Some(h) = dht.get("Humidity") {
+            map.insert("humidity".to_string(), h.clone());
+        }
+        values_fallback = map;
+        &values_fallback
+    } else {
+        bail!("values must be an object");
+    };
     if values.is_empty() {
         bail!("values must not be empty");
     }

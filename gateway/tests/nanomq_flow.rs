@@ -22,6 +22,7 @@ async fn ingests_valid_telemetry_and_continues_after_malformed_message() {
         DeviceConfig { local_id: "esp2".into(), name: "ESP2 TDS".into(), profile: "TDS".into() },
     ];
     let store = Store::connect("sqlite::memory:").await.unwrap();
+    store.set_aggregation_window(0);
     let (_client, consumer) = LocalMqtt::start(host, port, "", "", devices.to_vec(), store.clone()).await.unwrap();
     let (publisher, mut eventloop) = Client::new(MqttOptions::new("nanomq-flow-test", host, port), 10);
     let (connected_tx, connected_rx) = oneshot::channel();

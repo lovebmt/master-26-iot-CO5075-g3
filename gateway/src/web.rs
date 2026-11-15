@@ -71,6 +71,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/firmware/version.json", get(serve_firmware_version))
         .route("/devices/:device_id/chart", get(device_chart))
         .route("/queue/clean", post(clean_queue))
+        .route("/settings/aggregation", post(set_aggregation))
         .route("/static/style.css", get(stylesheet))
         .with_state(state)
 }
@@ -159,11 +160,30 @@ async fn dashboard(State(s): State<Arc<AppState>>, headers: HeaderMap) -> Respon
     .into_response()
 }
 
-async fn devices_fragment(State(s): State<Arc<AppState>>) -> impl IntoResponse {
-    let rows = build_rows(&s).await;
+async fn render_devices_fragment(s: &Arc<AppState>) -> Html<String> {
+    let rows = build_rows(s).await;
     let queue_count = s.store.outbox_count().await.unwrap_or(0);
+    let agg_window_secs = s.store.get_aggregation_window();
     let tmpl = s.env.get_template("_devices.html").unwrap();
-    Html(tmpl.render(context!(devices => rows, queue_count => queue_count)).unwrap())
+    Html(tmpl.render(context!(devices => rows, queue_count => queue_count, agg_window_secs => agg_window_secs)).unwrap())
+}
+
+async fn devices_fragment(State(s): State<Arc<AppState>>) -> impl IntoResponse {
+    render_devices_fragment(&s).await
+}
+
+#[derive(Deserialize)]
+pub struct AggregationForm {
+    pub window_secs: u64,
+}
+
+async fn set_aggregation(
+    State(s): State<Arc<AppState>>,
+    Form(form): Form<AggregationForm>,
+) -> Response {
+    s.store.set_aggregation_window(form.window_secs);
+    tracing::info!(window_secs = form.window_secs, "[Aggregation Config] Updated edge aggregation window");
+    render_devices_fragment(&s).await.into_response()
 }
 
 #[derive(Deserialize)]
@@ -197,6 +217,7 @@ async fn trigger_ota_post(
     })
     .to_string();
 
+    tracing::info!(force = force, payload = %payload, "[Web Control] Dispatched OTA command to ESP2");
     if let Some(client) = &s.local_client {
         let _ = client
             .publish(
@@ -208,10 +229,7 @@ async fn trigger_ota_post(
             .await;
     }
 
-    let rows = build_rows(&s).await;
-    let queue_count = s.store.outbox_count().await.unwrap_or(0);
-    let tmpl = s.env.get_template("_devices.html").unwrap();
-    Html(tmpl.render(context!(devices => rows, queue_count => queue_count)).unwrap()).into_response()
+    render_devices_fragment(&s).await.into_response()
 }
 
 async fn serve_firmware() -> Response {
@@ -295,10 +313,7 @@ async fn clean_queue(
     match (parse_from, parse_to) {
         (Ok(from_ms), Ok(to_ms)) => {
             let _ = s.store.clean_outbox_range(from_ms, to_ms).await;
-            let rows = build_rows(&s).await;
-            let queue_count = s.store.outbox_count().await.unwrap_or(0);
-            let tmpl = s.env.get_template("_devices.html").unwrap();
-            Html(tmpl.render(context!(devices => rows, queue_count => queue_count)).unwrap()).into_response()
+            render_devices_fragment(&s).await.into_response()
         }
         _ => (axum::http::StatusCode::BAD_REQUEST, "invalid date format, use YYYY-MM-DD").into_response(),
     }
@@ -315,13 +330,11 @@ async fn set_light(
 
     match command::from_dashboard("esp2", "set_light", &form.value, &mut || cid.clone()) {
         Ok(cmd) => {
+            tracing::info!(state = %form.value, topic = %cmd.topic, payload = %cmd.payload, "[Web Control] Dispatched Air Conditioner toggle");
             if let Some(client) = &s.local_client {
                 let _ = client.publish(&cmd.topic, rumqttc::QoS::AtLeastOnce, false, cmd.payload.as_bytes()).await;
             }
-            let rows = build_rows(&s).await;
-            let queue_count = s.store.outbox_count().await.unwrap_or(0);
-            let tmpl = s.env.get_template("_devices.html").unwrap();
-            Html(tmpl.render(context!(devices => rows, queue_count => queue_count)).unwrap()).into_response()
+            render_devices_fragment(&s).await.into_response()
         }
         Err(e) => {
             (axum::http::StatusCode::BAD_REQUEST, e.to_string()).into_response()
@@ -459,6 +472,7 @@ mod tests {
         assert!(html.contains("esp2"), "ESP2 row missing");
         assert!(html.contains("ESP1 CO2"), "ESP1 tb_name missing");
         assert!(html.contains("Outbox Queue"), "Queue panel missing");
+        assert!(html.contains("Edge Data Aggregator"), "Aggregator panel missing");
     }
 
     #[tokio::test]
@@ -618,5 +632,24 @@ mod tests {
         assert_eq!(resp.status(), 303);
         assert!(resp.headers().get("set-cookie").unwrap().to_str().unwrap().contains("auth_session=admin_logged_in"));
     }
-}
 
+
+    #[tokio::test]
+    async fn set_aggregation_endpoint_updates_store() {
+        let state = test_state().await;
+        let app = router(state.clone());
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/settings/aggregation")
+                    .header("content-type", "application/x-www-form-urlencoded")
+                    .body(axum::body::Body::from("window_secs=30"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(state.store.get_aggregation_window(), 30);
+    }
+}

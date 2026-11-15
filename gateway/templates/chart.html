@@ -1,79 +1,113 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Chart — {{ device_id }}</title>
-<link rel="stylesheet" href="/static/style.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — {{ device_id }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-<header class="app-header">
-  <p><a href="/">&larr; Back to Dashboard</a></p>
-  <div class="user-meta">
-    <span>Logged in as: <strong>admin</strong></span>
-    <a href="/logout" class="logout-btn">Logout</a>
+  <div class="container">
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <a href="/" class="back-link">
+          <span>&larr;</span>
+          <span>Back to Gateway Console</span>
+        </a>
+      </div>
+      <div class="user-meta">
+        <span class="badge-role">
+          <span class="dot"></span>
+          <span>admin</span>
+        </span>
+        <a href="/logout" class="logout-btn">Logout &rarr;</a>
+      </div>
+    </header>
+
+    <div class="content-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+        <div>
+          <h1 style="font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.2rem;">
+            📈 Device History: {{ device_id }}
+          </h1>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">
+            Node Identifier: <code>{{ device_id }}</code> &bull; Max 200 data points per metric
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-controls">
+        <span class="chart-controls-label">Select Metrics:</span>
+        {% for m in metrics %}
+          <label class="metric-chip">
+            <input type="checkbox" class="metric-toggle" value="{{ m }}" checked onchange="updateChart()">
+            <span>{{ m }}</span>
+          </label>
+        {% else %}
+          <em style="font-size: 0.85rem; color: var(--text-muted);">No telemetry points recorded yet for this node.</em>
+        {% endfor %}
+      </div>
+
+      <div class="chart-container">
+        <canvas id="timeSeriesChart"></canvas>
+      </div>
+    </div>
   </div>
-</header>
-<h1>Device History: {{ device_id }}</h1>
 
-<div class="chart-controls">
-  <span>Select metrics:</span>
-  {% for m in metrics %}
-  <label class="metric-chip">
-    <input type="checkbox" class="metric-toggle" value="{{ m }}" checked onchange="updateChart()">
-    {{ m }}
-  </label>
-  {% else %}
-  <em>No history recorded yet for this device. Send telemetry first!</em>
-  {% endfor %}
-</div>
+  <script>
+    const rawData = {{ series_json|safe }};
+    const colors = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#0891b2', '#e11d48'];
+    let chart = null;
 
-<div class="chart-container">
-  <canvas id="timeSeriesChart"></canvas>
-</div>
+    function renderChart() {
+      const selected = Array.from(document.querySelectorAll('.metric-toggle:checked')).map(el => el.value);
+      const datasets = [];
+      let colorIdx = 0;
 
-<script>
-const rawData = {{ series_json|safe }};
-const colors = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#0891b2'];
-let chart = null;
-
-function renderChart() {
-  const selected = Array.from(document.querySelectorAll('.metric-toggle:checked')).map(el => el.value);
-  const datasets = [];
-  let colorIdx = 0;
-
-  for (const m of selected) {
-    const pts = rawData[m] || [];
-    datasets.push({
-      label: m,
-      data: pts.map(p => ({ x: new Date(p[0]).toLocaleTimeString(), y: p[1] })),
-      borderColor: colors[colorIdx % colors.length],
-      backgroundColor: colors[colorIdx % colors.length] + '22',
-      tension: 0.25,
-      fill: false,
-    });
-    colorIdx++;
-  }
-
-  const ctx = document.getElementById('timeSeriesChart').getContext('2d');
-  if (chart) { chart.destroy(); }
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: { datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { title: { display: true, text: 'Time' } },
-        y: { title: { display: true, text: 'Value' } }
+      for (const m of selected) {
+        const pts = rawData[m] || [];
+        datasets.push({
+          label: m,
+          data: pts.map(p => ({ x: new Date(p[0]).toLocaleTimeString(), y: p[1] })),
+          borderColor: colors[colorIdx % colors.length],
+          backgroundColor: colors[colorIdx % colors.length] + '22',
+          tension: 0.25,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 5
+        });
+        colorIdx++;
       }
-    }
-  });
-}
 
-function updateChart() { renderChart(); }
-window.onload = renderChart;
-</script>
+      const ctx = document.getElementById('timeSeriesChart').getContext('2d');
+      if (chart) { chart.destroy(); }
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { weight: 600 } } },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            x: { 
+              grid: { color: '#f1f5f9' },
+              title: { display: true, text: 'Sampling Timestamp', font: { weight: 600, size: 12 } } 
+            },
+            y: { 
+              grid: { color: '#f1f5f9' },
+              title: { display: true, text: 'Engineering Value', font: { weight: 600, size: 12 } } 
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart() { renderChart(); }
+    window.onload = renderChart;
+  </script>
 </body>
 </html>
-

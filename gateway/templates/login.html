@@ -1,29 +1,43 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Gateway Login</title>
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gateway Login — Management Console</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="login-body">
-<div class="login-card">
-  <h2>IoT Gateway Login</h2>
-  {% if error %}
-  <p class="error-msg">{{ error }}</p>
-  {% endif %}
-  <form method="POST" action="/login">
-    <div class="form-group">
-      <label>Username</label>
-      <input type="text" name="username" value="admin" required autofocus>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-icon">🌱</div>
+      <h2>CoreIOT Edge Gateway</h2>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+        Smart Mushroom Farm &bull; Nhóm 3
+      </div>
     </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" name="password" value="admin" required>
+
+    {% if error %}
+    <div class="error-msg">
+      <span>⚠️</span>
+      <span>{{ error }}</span>
     </div>
-    <button type="submit" class="primary-btn">Log In</button>
-  </form>
-  <p class="hint">Default credentials: <code>admin / admin</code></p>
-</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <div class="form-group">
+        <label>Supervisor Username</label>
+        <input type="text" name="username" value="admin" required autofocus autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" value="admin" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="primary-btn">Sign In to Gateway &rarr;</button>
+    </form>
+
+    <p class="hint">
+      Default Access: <code>admin / admin</code>
+    </p>
+  </div>
 </body>
 </html>
-

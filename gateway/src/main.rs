@@ -49,6 +49,7 @@ async fn real_run() -> Result<()> {
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
+        .with_writer(std::io::stderr)
         .init();
 
     let config = Config::from_env()?;
@@ -83,7 +84,8 @@ async fn real_run() -> Result<()> {
     let store_rpc = store.clone();
     tokio::spawn(async move {
         while let Some(rpc) = tb.rpc_rx.recv().await {
-            info!(rpc = %rpc, "received ThingsBoard RPC");
+            let rpc_str = rpc.to_string();
+            info!(rpc = %rpc_str, "[CoreIOT RPC RX] Received RPC command from ThingsBoard");
             let mut counter = id_gen.lock().await;
             *counter += 1;
             let cid = format!("rpc-{}", *counter);
@@ -101,7 +103,7 @@ async fn real_run() -> Result<()> {
                                 Ok(Some(st)) => {
                                     serde_json::from_str::<serde_json::Value>(&st.payload_json)
                                         .ok()
-                                        .and_then(|v| v.get("light_on").and_then(|l| l.as_bool()))
+                                        .and_then(|v| v.get("values").and_then(|val| val.get("light_on")).or_else(|| v.get("light_on")).and_then(|l| l.as_bool()))
                                         .unwrap_or(false)
                                 }
                                 _ => false,
@@ -112,7 +114,7 @@ async fn real_run() -> Result<()> {
                                 "data": { "state": is_on }
                             }).to_string();
                             let _ = rpc_tb_client.publish("v1/gateway/rpc", rumqttc::QoS::AtLeastOnce, false, reply.as_bytes()).await;
-                            info!(device = %tb_name, id = rpc_id, is_on, "replied to ThingsBoard get_light");
+                            info!(device = %tb_name, id = rpc_id, is_on, reply = %reply, "[CoreIOT RPC TX] Replied to get_light query");
                         }
                     } else {
                         if cmd.is_ota {
@@ -120,7 +122,7 @@ async fn real_run() -> Result<()> {
                                 .as_str()
                                 .unwrap_or("1.0.4")
                                 .to_string();
-                            info!(version = %sync_ver, "Syncing OTA firmware package from CoreIOT repository...");
+                            info!(version = %sync_ver, "[OTA Sync] Synchronizing firmware package from CoreIOT repository...");
                             let _ = tokio::task::spawn_blocking(move || {
                                 let script = if std::path::Path::new("scripts/sync_coreiot_firmware.py").exists() {
                                     "scripts/sync_coreiot_firmware.py"
@@ -134,7 +136,8 @@ async fn real_run() -> Result<()> {
                             })
                             .await;
                         }
-                        info!(topic = %cmd.topic, payload = %cmd.payload, "routing RPC to local device");
+
+                        info!(topic = %cmd.topic, payload = %cmd.payload, "[Local MQTT TX] Routing command down to device");
                         let _ = rpc_local_client.publish(&cmd.topic, rumqttc::QoS::AtLeastOnce, false, cmd.payload.as_bytes()).await;
 
                         if let (Some(tb_name), Some(rpc_id)) = (cmd.tb_device_name, cmd.rpc_id) {
@@ -145,11 +148,11 @@ async fn real_run() -> Result<()> {
                                 "data": { "state": st }
                             }).to_string();
                             let _ = rpc_tb_client.publish("v1/gateway/rpc", rumqttc::QoS::AtLeastOnce, false, reply.as_bytes()).await;
-                            info!(device = %tb_name, id = rpc_id, "replied to ThingsBoard set_light");
+                            info!(device = %tb_name, id = rpc_id, reply = %reply, "[CoreIOT RPC TX] Sent RPC execution acknowledgment to ThingsBoard");
                         }
                     }
                 }
-                Err(e) => tracing::warn!(reason = %e, "rejected ThingsBoard RPC"),
+                Err(e) => tracing::warn!(reason = %e, rpc = %rpc_str, "[CoreIOT RPC Reject] Rejected invalid RPC request"),
             }
         }
     });
