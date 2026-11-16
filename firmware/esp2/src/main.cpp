@@ -483,7 +483,7 @@ class ClientCallbacks : public NimBLEClientCallbacks {
 
 static void setup_webserver() {
   server.on("/", HTTP_GET, []() {
-    char soil_val[32];
+    char soil_val[64];
     if (current_soil_temp > -900.0f) {
       snprintf(soil_val, sizeof(soil_val), "%.1f <span class='unit'>&deg;C</span>", current_soil_temp);
     } else {
@@ -491,7 +491,7 @@ static void setup_webserver() {
     }
 
     String h;
-    h.reserve(3200);
+    h.reserve(4500);
     h += "<!DOCTYPE html><html lang='vi'><head><meta charset='UTF-8'>";
     h += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
     h += "<meta http-equiv='refresh' content='5'>";
