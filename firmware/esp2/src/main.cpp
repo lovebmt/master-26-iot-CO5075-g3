@@ -32,7 +32,7 @@
 #define XPT2046_CLK 25
 #define XPT2046_CS 33
 
-static TFT_eSPI tft = TFT_eSPI();
+    static TFT_eSPI tft = TFT_eSPI();
 static SPIClass touchSPI(VSPI);
 static XPT2046_Touchscreen touch(XPT2046_CS, XPT2046_IRQ);
 
@@ -82,9 +82,11 @@ void forward_ble_telemetry(const char *device_id, float temp) {
     char topic[64];
     snprintf(topic, sizeof(topic), "iot/%s/telemetry", device_id);
     char payload[96];
-    snprintf(payload, sizeof(payload), "{\"values\":{\"soil_temp\":%.1f}}", temp);
+    snprintf(payload, sizeof(payload), "{\"values\":{\"soil_temp\":%.1f}}",
+             temp);
     mqttClient.publish(topic, payload);
-    Serial.printf("[BLE BRIDGE -> GATEWAY] Forwarded node '%s' to %s: %s\n", device_id, topic, payload);
+    Serial.printf("[BLE BRIDGE -> GATEWAY] Forwarded node '%s' to %s: %s\n",
+                  device_id, topic, payload);
   }
 }
 
@@ -106,6 +108,8 @@ void send_telemetry() {
   }
 }
 
+static void update_screen();
+
 void set_light(bool on) {
   bool changed = (current_light != on);
   current_light = on;
@@ -118,6 +122,7 @@ void set_light(bool on) {
   if (changed) {
     send_telemetry();
   }
+  update_screen();
 }
 
 static void draw_normal_screen() {
@@ -474,12 +479,14 @@ static void on_ble_notify(NimBLERemoteCharacteristic *pChar, uint8_t *pData,
 
     if (doc["soil_temp"].is<float>()) {
       current_soil_temp = doc["soil_temp"].as<float>();
-      Serial.printf("[BLE PARSE] Node %s Soil Temperature (PT100): %.1f C\n", node_id, current_soil_temp);
+      Serial.printf("[BLE PARSE] Node %s Soil Temperature (PT100): %.1f C\n",
+                    node_id, current_soil_temp);
       forward_ble_telemetry(node_id, current_soil_temp);
       send_telemetry();
     } else if (doc["tds_ppm"].is<float>()) {
       current_soil_temp = doc["tds_ppm"].as<float>();
-      Serial.printf("[BLE PARSE] Node %s Soil Temperature (Fallback): %.1f C\n", node_id, current_soil_temp);
+      Serial.printf("[BLE PARSE] Node %s Soil Temperature (Fallback): %.1f C\n",
+                    node_id, current_soil_temp);
       forward_ble_telemetry(node_id, current_soil_temp);
       send_telemetry();
     }
@@ -505,73 +512,132 @@ static void setup_webserver() {
   server.on("/", HTTP_GET, []() {
     char soil_val[64];
     if (current_soil_temp > -900.0f) {
-      snprintf(soil_val, sizeof(soil_val), "%.1f <span class='unit'>&deg;C</span>", current_soil_temp);
+      snprintf(soil_val, sizeof(soil_val),
+               "%.1f <span class='unit'>&deg;C</span>", current_soil_temp);
     } else {
-      snprintf(soil_val, sizeof(soil_val), "-- <span class='unit'>waiting BLE</span>");
+      snprintf(soil_val, sizeof(soil_val),
+               "-- <span class='unit'>waiting BLE</span>");
     }
 
     String h;
     h.reserve(4500);
     h += "<!DOCTYPE html><html lang='vi'><head><meta charset='UTF-8'>";
-    h += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
+    h +=
+        "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
     h += "<meta http-equiv='refresh' content='5'>";
     h += "<title>ESP2 Smart Edge Hub</title><style>";
-    h += ":root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f8fafc;--muted:#94a3b8;--blue:#3b82f6;--green:#10b981;--red:#ef4444;}";
-    h += "*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);padding:1rem;display:flex;justify-content:center;}";
-    h += ".wrap{max-width:520px;width:100%;}.header{display:flex;justify-content:space-between;align-items:center;padding:0.75rem 0;border-bottom:1px solid var(--border);margin-bottom:1rem;}";
-    h += ".title h1{font-size:1.2rem;font-weight:700;}.title p{font-size:0.75rem;color:var(--muted);}";
-    h += ".badge{padding:0.2rem 0.55rem;border-radius:9999px;font-size:0.7rem;font-weight:600;display:inline-flex;align-items:center;}";
-    h += ".badge-ok{background:rgba(16,185,129,0.2);color:#34d399;border:1px solid rgba(16,185,129,0.3);}";
-    h += ".badge-scan{background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);}";
+    h += ":root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f8fafc;--"
+         "muted:#94a3b8;--blue:#3b82f6;--green:#10b981;--red:#ef4444;}";
+    h += "*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-"
+         "system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(-"
+         "-text);padding:1rem;display:flex;justify-content:center;}";
+    h += ".wrap{max-width:520px;width:100%;}.header{display:flex;justify-"
+         "content:space-between;align-items:center;padding:0.75rem "
+         "0;border-bottom:1px solid var(--border);margin-bottom:1rem;}";
+    h += ".title h1{font-size:1.2rem;font-weight:700;}.title "
+         "p{font-size:0.75rem;color:var(--muted);}";
+    h += ".badge{padding:0.2rem "
+         "0.55rem;border-radius:9999px;font-size:0.7rem;font-weight:600;"
+         "display:inline-flex;align-items:center;}";
+    h += ".badge-ok{background:rgba(16,185,129,0.2);color:#34d399;border:1px "
+         "solid rgba(16,185,129,0.3);}";
+    h += ".badge-scan{background:rgba(245,158,11,0.2);color:#fbbf24;border:1px "
+         "solid rgba(245,158,11,0.3);}";
     h += ".badge-fw{background:#334155;color:#cbd5e1;}";
-    h += ".grid{display:grid;gap:0.85rem;}.card{background:var(--card);border:1px solid var(--border);border-radius:0.75rem;padding:1rem;}";
-    h += ".card-head{font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;}";
-    h += ".val{font-size:2rem;font-weight:800;color:#38bdf8;line-height:1.2;}.unit{font-size:1rem;font-weight:500;color:var(--muted);}";
-    h += ".row{display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.8rem;}.row:last-child{border-bottom:none;}";
-    h += ".btn{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;width:100%;padding:0.65rem 1rem;font-size:0.85rem;font-weight:600;border-radius:0.5rem;border:none;cursor:pointer;text-decoration:none;}";
-    h += ".btn-on{background:var(--green);color:#fff;}.btn-off{background:#475569;color:#fff;}.btn-fw{background:var(--blue);color:#fff;}.btn-upload{background:#0284c7;color:#fff;margin-top:0.4rem;}";
-    h += ".file-input{width:100%;padding:0.4rem;background:#0f172a;border:1px dashed var(--border);border-radius:0.375rem;color:var(--muted);font-size:0.75rem;}";
-    h += ".footer{text-align:center;font-size:0.7rem;color:var(--muted);margin-top:1rem;}";
+    h += ".grid{display:grid;gap:0.85rem;}.card{background:var(--card);border:"
+         "1px solid var(--border);border-radius:0.75rem;padding:1rem;}";
+    h += ".card-head{font-size:0.75rem;text-transform:uppercase;letter-spacing:"
+         "0.05em;color:var(--muted);display:flex;justify-content:space-between;"
+         "align-items:center;margin-bottom:0.4rem;}";
+    h += ".val{font-size:2rem;font-weight:800;color:#38bdf8;line-height:1.2;}."
+         "unit{font-size:1rem;font-weight:500;color:var(--muted);}";
+    h += ".row{display:flex;justify-content:space-between;padding:0.4rem "
+         "0;border-bottom:1px solid "
+         "rgba(255,255,255,0.05);font-size:0.8rem;}.row:last-child{border-"
+         "bottom:none;}";
+    h += ".btn{display:inline-flex;align-items:center;justify-content:center;"
+         "gap:0.5rem;width:100%;padding:0.65rem "
+         "1rem;font-size:0.85rem;font-weight:600;border-radius:0.5rem;border:"
+         "none;cursor:pointer;text-decoration:none;}";
+    h += ".btn-on{background:var(--green);color:#fff;}.btn-off{background:#"
+         "475569;color:#fff;}.btn-fw{background:var(--blue);color:#fff;}.btn-"
+         "upload{background:#0284c7;color:#fff;margin-top:0.4rem;}";
+    h += ".file-input{width:100%;padding:0.4rem;background:#0f172a;border:1px "
+         "dashed "
+         "var(--border);border-radius:0.375rem;color:var(--muted);font-size:0."
+         "75rem;}";
+    h += ".footer{text-align:center;font-size:0.7rem;color:var(--muted);margin-"
+         "top:1rem;}";
     h += "</style></head><body><div class='wrap'>";
 
     // Header
-    h += "<div class='header'><div class='title'><h1>ESP2 Edge Controller</h1><p>Embedded Web Dashboard (CYD 2.8 inch)</p></div>";
-    h += "<div style='display:flex;gap:0.35rem;'><span class='badge badge-fw'>FW " + String(FW_VERSION) + "</span>";
-    h += "<span class='badge badge-ok'>Live</span></div></div><div class='grid'>";
+    h += "<div class='header'><div class='title'><h1>ESP2 Edge "
+         "Controller</h1><p>Embedded Web Dashboard (CYD 2.8 inch)</p></div>";
+    h += "<div style='display:flex;gap:0.35rem;'><span class='badge "
+         "badge-fw'>FW " +
+         String(FW_VERSION) + "</span>";
+    h += "<span class='badge badge-ok'>Live</span></div></div><div "
+         "class='grid'>";
 
     // Sensor Card
-    h += "<div class='card'><div class='card-head'><span>Gia the nam (PT100 RS485)</span>";
-    h += current_ble ? "<span class='badge badge-ok'>BLE Linked</span>" : "<span class='badge badge-scan'>Scanning...</span>";
+    h += "<div class='card'><div class='card-head'><span>Gia the nam (PT100 "
+         "RS485)</span>";
+    h += current_ble ? "<span class='badge badge-ok'>BLE Linked</span>"
+                     : "<span class='badge badge-scan'>Scanning...</span>";
     h += "</div><div class='val'>" + String(soil_val) + "</div>";
-    h += "<p style='font-size:0.7rem;color:var(--muted);margin-top:0.25rem;'>Nguon: ESP3 Nordic UART Service (6e400001)</p></div>";
+    h += "<p "
+         "style='font-size:0.7rem;color:var(--muted);margin-top:0.25rem;'>"
+         "Nguon: ESP3 Nordic UART Service (6e400001)</p></div>";
 
     // Air Con Relay Card
-    h += "<div class='card'><div class='card-head'><span>Role May Lanh (Air.Con)</span>";
-    h += current_light ? "<span style='font-weight:700;color:#34d399;'>DANG BAT (ON)</span>" : "<span style='font-weight:700;color:var(--muted);'>DANG TAT (OFF)</span>";
-    h += "</div><form method='post' action='/light?state=" + String(current_light ? "false" : "true") + "' style='margin-top:0.6rem;'>";
-    h += "<button type='submit' class='btn " + String(current_light ? "btn-off" : "btn-on") + "'>";
+    h += "<div class='card'><div class='card-head'><span>Role May Lanh "
+         "(Air.Con)</span>";
+    h += current_light
+             ? "<span style='font-weight:700;color:#34d399;'>DANG BAT "
+               "(ON)</span>"
+             : "<span style='font-weight:700;color:var(--muted);'>DANG TAT "
+               "(OFF)</span>";
+    h += "</div><form method='post' action='/light?state=" +
+         String(current_light ? "false" : "true") +
+         "' style='margin-top:0.6rem;'>";
+    h += "<button type='submit' class='btn " +
+         String(current_light ? "btn-off" : "btn-on") + "'>";
     h += current_light ? "Tat May Lanh (Turn OFF)" : "Bat May Lanh (Turn ON)";
     h += "</button></form></div>";
 
     // Hardware Telemetry Card
-    h += "<div class='card'><div class='card-head'><span>Thong tin phan cung & mang</span></div>";
-    h += "<div class='row'><span>Wi-Fi Network</span><span>" + WiFi.SSID() + " (" + String(WiFi.RSSI()) + " dBm)</span></div>";
-    h += "<div class='row'><span>IP Address</span><span>" + WiFi.localIP().toString() + ":8080</span></div>";
-    h += "<div class='row'><span>BLE Bridge</span><span>" + String(current_ble ? "Connected to ESP3-PT100" : "Scanning BLE NUS...") + "</span></div>";
-    h += "<div class='row'><span>Free Heap RAM</span><span>" + String(ESP.getFreeHeap() / 1024) + " KB</span></div></div>";
+    h += "<div class='card'><div class='card-head'><span>Thong tin phan cung & "
+         "mang</span></div>";
+    h += "<div class='row'><span>Wi-Fi Network</span><span>" + WiFi.SSID() +
+         " (" + String(WiFi.RSSI()) + " dBm)</span></div>";
+    h += "<div class='row'><span>IP Address</span><span>" +
+         WiFi.localIP().toString() + ":8080</span></div>";
+    h += "<div class='row'><span>BLE Bridge</span><span>" +
+         String(current_ble ? "Connected to ESP3-PT100"
+                            : "Scanning BLE NUS...") +
+         "</span></div>";
+    h += "<div class='row'><span>Free Heap RAM</span><span>" +
+         String(ESP.getFreeHeap() / 1024) + " KB</span></div></div>";
 
     // OTA Card
-    h += "<div class='card'><div class='card-head'><span>Bao tri Firmware (OTA)</span></div>";
-    h += "<form method='post' action='/check_fw' style='margin-bottom:0.7rem;'>";
-    h += "<button type='submit' class='btn btn-fw'>Kiem tra ban cap nhat tu Gateway</button></form>";
+    h += "<div class='card'><div class='card-head'><span>Bao tri Firmware "
+         "(OTA)</span></div>";
+    h +=
+        "<form method='post' action='/check_fw' style='margin-bottom:0.7rem;'>";
+    h += "<button type='submit' class='btn btn-fw'>Kiem tra ban cap nhat tu "
+         "Gateway</button></form>";
     h += "<div style='border-top:1px solid var(--border);padding-top:0.6rem;'>";
-    h += "<p style='font-size:0.7rem;color:var(--muted);margin-bottom:0.35rem;'>Nap Firmware cuc bo (.bin):</p>";
+    h += "<p "
+         "style='font-size:0.7rem;color:var(--muted);margin-bottom:0.35rem;'>"
+         "Nap Firmware cuc bo (.bin):</p>";
     h += "<form method='post' action='/ota' enctype='multipart/form-data'>";
     h += "<input type='file' name='update' class='file-input' required>";
-    h += "<button type='submit' class='btn btn-upload'>Upload & Flash</button></form></div></div></div>";
+    h += "<button type='submit' class='btn btn-upload'>Upload & "
+         "Flash</button></form></div></div></div>";
 
     // Footer
-    h += "<div class='footer'>Nha Nam Thong Minh • IoT CO5075 • Nhom 3 (Auto-refresh 5s)</div></div></body></html>";
+    h += "<div class='footer'>Nha Nam Thong Minh • IoT CO5075 • Nhom 3 "
+         "(Auto-refresh 5s)</div></div></body></html>";
 
     server.send(200, "text/html", h);
   });

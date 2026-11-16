@@ -71,7 +71,17 @@ def main():
     print(f"[CoreIOT Sync] Successfully cached {len(bin_data):,} bytes to {dest_bin}")
 
     # 4. Generate version.json dynamically from CoreIOT metadata
-    gw_ip = os.environ.get("GATEWAY_IP", "192.168.137.230")
+    gw_ip = os.environ.get("GATEWAY_IP")
+    if not gw_ip:
+        env_file = os.path.join(workspace, "gateway/.env")
+        if os.path.exists(env_file):
+            with open(env_file) as f:
+                for line in f:
+                    if line.startswith("GATEWAY_IP="):
+                        gw_ip = line.strip().split("=", 1)[1]
+                        break
+    if not gw_ip:
+        gw_ip = "192.168.1.19"
     vinfo = {
         "version": target_ver,
         "package_id": pkg_id,

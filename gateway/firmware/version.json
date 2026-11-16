@@ -1,10 +1,10 @@
 {
-  "version": "1.0.4",
-  "package_id": "8e814720-d989-11f1-9301-8d833790fa1a",
+  "version": "1.0.5",
+  "package_id": "19ea5590-e15a-11f1-979d-0df8e7a278cb",
   "title": "ESP2 Hub Firmware",
-  "data_size": 1265008,
-  "checksum": "19912e8dc7f15fe642374d534e3146d748e0bfb58d22664901220a52c1a6d15d",
+  "data_size": 1276480,
+  "checksum": "e668c6349e61b4c39ebc04949387b07ebd9cb911cb23d5f44ab7de1bdcbe3d8b",
   "checksum_algorithm": "SHA256",
   "source": "CoreIOT OTA Package Repository",
-  "url": "http://192.168.137.230:8080/firmware/esp2.bin"
+  "url": "http://192.168.1.19:8080/firmware/esp2.bin"
 }

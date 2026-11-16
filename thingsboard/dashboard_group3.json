@@ -1,5 +1,5 @@
 {
-  "title": "IoT System Dashboard \u2014 Group 3",
+  "title": "IoT System Dashboard — Group 3",
   "image": null,
   "mobileHide": false,
   "mobileOrder": null,
@@ -7,15 +7,11 @@
     "description": "Live Monitoring & Control for ESP1, ESP2 and PC Gateway",
     "widgets": {
       "41e752a4-b381-4726-96e9-d00fcf30d18a": {
-        "isSystemType": true,
-        "bundleAlias": "cards",
-        "typeAlias": "timeseries_table",
         "type": "timeseries",
-        "title": "ESP2 \u2014 Soil Temp & Light (PT100 Modbus)",
-        "sizeX": 24,
-        "sizeY": 5,
+        "sizeX": 12,
+        "sizeY": 7,
         "row": 0,
-        "col": 0,
+        "col": 12,
         "config": {
           "datasources": [
             {
@@ -25,7 +21,7 @@
                 {
                   "name": "soil_temp",
                   "type": "timeseries",
-                  "label": "Soil Temp (\u00b0C)",
+                  "label": "Soil Temp (°C)",
                   "color": "#16a34a",
                   "settings": {},
                   "_hash": 0.456
@@ -58,18 +54,16 @@
             "displayPagination": true,
             "defaultPageSize": 5
           },
-          "title": "ESP2 \u2014 Soil Temp & Light (PT100 Modbus)"
-        }
+          "title": "ESP2 — Soil Temp & Light (PT100 Modbus)"
+        },
+        "typeFullFqn": "system.cards.timeseries_table",
+        "id": "a03abcc9-95ff-ee67-5f98-b6cda65db20f"
       },
       "06e9a009-0a5f-4369-a49a-26c12983a24c": {
-        "isSystemType": true,
-        "bundleAlias": "control_widgets",
-        "typeAlias": "round_switch",
         "type": "rpc",
-        "title": "Control ESP2 Light",
         "sizeX": 8,
         "sizeY": 5,
-        "row": 5,
+        "row": 7,
         "col": 0,
         "config": {
           "targetDevice": {
@@ -90,19 +84,18 @@
             "parseValueFunction": "return (data === true || data === 'true' || data === 1 || data === '1');",
             "convertValueFunction": "return value;"
           },
-          "title": "Control ESP2 Light"
-        }
+          "title": "Control ESP2 Light",
+          "datasources": []
+        },
+        "typeFullFqn": "system.control_widgets.round_switch",
+        "id": "25a01b00-6cb1-5648-f338-5aa3efffda01"
       },
       "c3d4e5f6-a1b2-4c3d-8e4f-5a6b7c8d9e0f": {
-        "isSystemType": true,
-        "bundleAlias": "cards",
-        "typeAlias": "html_card",
-        "typeFullFqn": "cards.html_card",
+        "typeFullFqn": "system.cards.html_card",
         "type": "static",
-        "title": "ESP2 Firmware OTA Management",
         "sizeX": 16,
         "sizeY": 5,
-        "row": 5,
+        "row": 7,
         "col": 8,
         "config": {
           "datasources": [],
@@ -110,11 +103,12 @@
           "backgroundColor": "#ffffff",
           "padding": "0px",
           "settings": {
-            "cardHtml": "<div style=\"padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: 100%; box-sizing: border-box;\">\n  <div style=\"display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;\">\n    <span style=\"font-weight: 700; font-size: 16px; color: #0f172a;\">\u26a1 CoreIOT OTA Packages \u2014 Version Selector & Dispatcher</span>\n    <span style=\"font-size: 12px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-weight: 600;\">Repository Sync</span>\n  </div>\n  <div style=\"display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; align-items: center;\">\n    <div>\n      <label style=\"font-size: 13px; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;\">Select Target Version from CoreIOT Repository:</label>\n      <select id=\"ota_target_ver_sel\" style=\"width: 100%; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #94a3b8; font-size: 14px; font-weight: 600; color: #0f172a; background: #f8fafc; cursor: pointer;\">\n        <option value=\"1.0.4\">ESP2 Hub Firmware v1.0.4 (Recommended Update)</option>\n        <option value=\"1.0.5\">ESP2 Hub Firmware v1.0.5 (Feature Release)</option>\n        <option value=\"1.0.6\">ESP2 Hub Firmware v1.0.6 (Latest Patch)</option>\n        <option value=\"1.0.3\">ESP2 Hub Firmware v1.0.3 (Base Release)</option>\n      </select>\n    </div>\n    <div style=\"padding-top: 18px;\">\n      <button onclick=\"var sel = document.getElementById('ota_target_ver_sel');\nvar ver = sel ? sel.value : '1.0.4';\nvar fb = document.getElementById('ota_action_feedback');\nif (fb) {\n  fb.style.color = '#2563eb';\n  fb.innerText = '\u23f3 \u0110ang g\u1eedi l\u1ec7nh OTA v' + ver + ' t\u1edbi CoreIOT...';\n}\nvar token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');\nvar headers = {'Content-Type': 'application/json'};\nif (token) headers['X-Authorization'] = 'Bearer ' + token;\nfetch('/api/plugins/rpc/oneway/cf2cd650-d7e9-11f1-9301-8d833790fa1a', {\n  method: 'POST',\n  credentials: 'same-origin',\n  headers: headers,\n  body: JSON.stringify({ method: 'ota_update', params: { version: ver, force: false } })\n}).then(function(res) {\n  if (res.ok) {\n    if (fb) {\n      fb.style.color = '#16a34a';\n      fb.innerText = '\u2713 \u0110\u00c3 G\u1eecI L\u1ec6NH TH\u00c0NH C\u00d4NG! CoreIOT \u0111ang \u0111\u1ea9y v' + ver + ' (H\u1ecfi x\u00e1c nh\u1eadn tr\u00ean LCD) t\u1edbi ESP2!';\n    }\n  } else {\n    if (fb) {\n      fb.style.color = '#dc2626';\n      fb.innerText = '\u2717 L\u1ed7i: HTTP ' + res.status;\n    }\n  }\n}).catch(function(err) {\n  if (fb) {\n    fb.style.color = '#dc2626';\n    fb.innerText = '\u2717 L\u1ed7i k\u1ebft n\u1ed1i: ' + err;\n  }\n});\" style=\"width: 100%; padding: 9px 14px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;\">\n        \ud83d\udce2 Notify ESP2 (Prompt)\n      </button>\n    </div>\n    <div style=\"padding-top: 18px;\">\n      <button onclick=\"var sel = document.getElementById('ota_target_ver_sel');\nvar ver = sel ? sel.value : '1.0.4';\nvar fb = document.getElementById('ota_action_feedback');\nif (fb) {\n  fb.style.color = '#2563eb';\n  fb.innerText = '\u23f3 \u0110ang g\u1eedi l\u1ec7nh OTA v' + ver + ' t\u1edbi CoreIOT...';\n}\nvar token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');\nvar headers = {'Content-Type': 'application/json'};\nif (token) headers['X-Authorization'] = 'Bearer ' + token;\nfetch('/api/plugins/rpc/oneway/cf2cd650-d7e9-11f1-9301-8d833790fa1a', {\n  method: 'POST',\n  credentials: 'same-origin',\n  headers: headers,\n  body: JSON.stringify({ method: 'ota_update', params: { version: ver, force: true } })\n}).then(function(res) {\n  if (res.ok) {\n    if (fb) {\n      fb.style.color = '#16a34a';\n      fb.innerText = '\u2713 \u0110\u00c3 G\u1eecI L\u1ec6NH TH\u00c0NH C\u00d4NG! CoreIOT \u0111ang \u0111\u1ea9y v' + ver + ' (N\u1ea1p c\u01b0\u1ee1ng b\u1ee9c ngay) t\u1edbi ESP2!';\n    }\n  } else {\n    if (fb) {\n      fb.style.color = '#dc2626';\n      fb.innerText = '\u2717 L\u1ed7i: HTTP ' + res.status;\n    }\n  }\n}).catch(function(err) {\n  if (fb) {\n    fb.style.color = '#dc2626';\n    fb.innerText = '\u2717 L\u1ed7i k\u1ebft n\u1ed1i: ' + err;\n  }\n});\" style=\"width: 100%; padding: 9px 14px; background: #ea580c; color: #ffffff; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;\">\n        \ud83d\ude80 Force OTA Update\n      </button>\n    </div>\n  </div>\n  <div id=\"ota_action_feedback\" style=\"margin-top: 12px; font-size: 13px; font-weight: 600; min-height: 20px;\"></div>\n</div>",
+            "cardHtml": "<div style=\"padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: 100%; box-sizing: border-box;\">\n  <div style=\"display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;\">\n    <span style=\"font-weight: 700; font-size: 16px; color: #0f172a;\">⚡ CoreIOT OTA Packages — Version Selector & Dispatcher</span>\n    <span style=\"font-size: 12px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-weight: 600;\">Repository Sync</span>\n  </div>\n  <div style=\"display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; align-items: center;\">\n    <div>\n      <label style=\"font-size: 13px; font-weight: 600; color: #334155; display: block; margin-bottom: 4px;\">Select Target Version from CoreIOT Repository:</label>\n      <select id=\"ota_target_ver_sel\" style=\"width: 100%; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #94a3b8; font-size: 14px; font-weight: 600; color: #0f172a; background: #f8fafc; cursor: pointer;\">\n        <option value=\"1.0.4\">ESP2 Hub Firmware v1.0.4 (Recommended Update)</option>\n        <option value=\"1.0.5\">ESP2 Hub Firmware v1.0.5 (Feature Release)</option>\n        <option value=\"1.0.6\">ESP2 Hub Firmware v1.0.6 (Latest Patch)</option>\n        <option value=\"1.0.3\">ESP2 Hub Firmware v1.0.3 (Base Release)</option>\n      </select>\n    </div>\n    <div style=\"padding-top: 18px;\">\n      <button onclick=\"var sel = document.getElementById('ota_target_ver_sel');\nvar ver = sel ? sel.value : '1.0.4';\nvar fb = document.getElementById('ota_action_feedback');\nif (fb) {\n  fb.style.color = '#2563eb';\n  fb.innerText = '⏳ Đang gửi lệnh OTA v' + ver + ' tới CoreIOT...';\n}\nvar token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');\nvar headers = {'Content-Type': 'application/json'};\nif (token) headers['X-Authorization'] = 'Bearer ' + token;\nfetch('/api/plugins/rpc/oneway/cf2cd650-d7e9-11f1-9301-8d833790fa1a', {\n  method: 'POST',\n  credentials: 'same-origin',\n  headers: headers,\n  body: JSON.stringify({ method: 'ota_update', params: { version: ver, force: false } })\n}).then(function(res) {\n  if (res.ok) {\n    if (fb) {\n      fb.style.color = '#16a34a';\n      fb.innerText = '✓ ĐÃ GỬI LỆNH THÀNH CÔNG! CoreIOT đang đẩy v' + ver + ' (Hỏi xác nhận trên LCD) tới ESP2!';\n    }\n  } else {\n    if (fb) {\n      fb.style.color = '#dc2626';\n      fb.innerText = '✗ Lỗi: HTTP ' + res.status;\n    }\n  }\n}).catch(function(err) {\n  if (fb) {\n    fb.style.color = '#dc2626';\n    fb.innerText = '✗ Lỗi kết nối: ' + err;\n  }\n});\" style=\"width: 100%; padding: 9px 14px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;\">\n        📢 Notify ESP2 (Prompt)\n      </button>\n    </div>\n    <div style=\"padding-top: 18px;\">\n      <button onclick=\"var sel = document.getElementById('ota_target_ver_sel');\nvar ver = sel ? sel.value : '1.0.4';\nvar fb = document.getElementById('ota_action_feedback');\nif (fb) {\n  fb.style.color = '#2563eb';\n  fb.innerText = '⏳ Đang gửi lệnh OTA v' + ver + ' tới CoreIOT...';\n}\nvar token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');\nvar headers = {'Content-Type': 'application/json'};\nif (token) headers['X-Authorization'] = 'Bearer ' + token;\nfetch('/api/plugins/rpc/oneway/cf2cd650-d7e9-11f1-9301-8d833790fa1a', {\n  method: 'POST',\n  credentials: 'same-origin',\n  headers: headers,\n  body: JSON.stringify({ method: 'ota_update', params: { version: ver, force: true } })\n}).then(function(res) {\n  if (res.ok) {\n    if (fb) {\n      fb.style.color = '#16a34a';\n      fb.innerText = '✓ ĐÃ GỬI LỆNH THÀNH CÔNG! CoreIOT đang đẩy v' + ver + ' (Nạp cưỡng bức ngay) tới ESP2!';\n    }\n  } else {\n    if (fb) {\n      fb.style.color = '#dc2626';\n      fb.innerText = '✗ Lỗi: HTTP ' + res.status;\n    }\n  }\n}).catch(function(err) {\n  if (fb) {\n    fb.style.color = '#dc2626';\n    fb.innerText = '✗ Lỗi kết nối: ' + err;\n  }\n});\" style=\"width: 100%; padding: 9px 14px; background: #ea580c; color: #ffffff; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;\">\n        🚀 Force OTA Update\n      </button>\n    </div>\n  </div>\n  <div id=\"ota_action_feedback\" style=\"margin-top: 12px; font-size: 13px; font-weight: 600; min-height: 20px;\"></div>\n</div>",
             "cardCss": ""
           },
           "title": "ESP2 Firmware OTA Management"
-        }
+        },
+        "id": "bd1b56c7-81d1-2dfa-338a-8af1e453e24f"
       },
       "alarm-table-widget-group3": {
         "type": "alarm",
@@ -150,9 +144,9 @@
             "enableStickyAction": false,
             "enableFilter": true,
             "entitiesTitle": null,
-            "alarmsTitle": "B\u1ea3ng Theo D\u00f5i C\u1ea3nh B\u00e1o Ng\u01b0\u1ee1ng (Hysteresis Alarms)"
+            "alarmsTitle": "Bảng Theo Dõi Cảnh Báo Ngưỡng (Hysteresis Alarms)"
           },
-          "title": "\ud83d\udea8 B\u1ea3ng C\u1ea3nh B\u00e1o Ng\u01b0\u1ee1ng Hysteresis (CoreIOT Alarms)",
+          "title": "🚨 Bảng Cảnh Báo Ngưỡng Hysteresis (CoreIOT Alarms)",
           "dropShadow": true,
           "enableFullscreen": true,
           "titleStyle": {
@@ -164,13 +158,13 @@
           "showLegend": false,
           "alarmSource": {
             "type": "entity",
-            "entityAliasId": "all-farm-devices-alias-id",
+            "entityAliasId": "ca2516ac-d67d-1798-f3c6-ffb6b5f11419",
             "name": "alarms",
             "dataKeys": [
               {
                 "name": "createdTime",
                 "type": "alarm",
-                "label": "Th\u1eddi gian t\u1ea1o",
+                "label": "Thời gian tạo",
                 "color": "#2196f3",
                 "settings": {
                   "useCellStyleFunction": false,
@@ -180,7 +174,7 @@
               {
                 "name": "originator",
                 "type": "alarm",
-                "label": "Thi\u1ebft b\u1ecb",
+                "label": "Thiết bị",
                 "color": "#4caf50",
                 "settings": {
                   "useCellStyleFunction": false,
@@ -190,7 +184,7 @@
               {
                 "name": "type",
                 "type": "alarm",
-                "label": "Lo\u1ea1i c\u1ea3nh b\u00e1o",
+                "label": "Loại cảnh báo",
                 "color": "#f44336",
                 "settings": {
                   "useCellStyleFunction": false,
@@ -200,7 +194,7 @@
               {
                 "name": "severity",
                 "type": "alarm",
-                "label": "M\u1ee9c \u0111\u1ed9",
+                "label": "Mức độ",
                 "color": "#ff9800",
                 "settings": {
                   "useCellStyleFunction": false,
@@ -210,7 +204,7 @@
               {
                 "name": "status",
                 "type": "alarm",
-                "label": "Tr\u1ea1ng th\u00e1i",
+                "label": "Trạng thái",
                 "color": "#607d8b",
                 "settings": {
                   "useCellStyleFunction": false,
@@ -219,26 +213,78 @@
               }
             ]
           },
-          "alarmSearchStatus": "ANY",
           "alarmsPollingInterval": 5,
           "showTitleIcon": true,
           "titleIcon": "warning",
           "iconColor": "#d32f2f",
           "iconSize": "24px",
-          "titleTooltip": "Gi\u00e1m s\u00e1t c\u1ea3nh b\u00e1o nhi\u1ec7t \u0111\u1ed9, \u0111\u1ed9 \u1ea9m kh\u00f4ng kh\u00ed v\u00e0 nhi\u1ec7t \u0111\u1ed9 gi\u00e1 th\u1ec3",
+          "titleTooltip": "Giám sát cảnh báo nhiệt độ, độ ẩm không khí và nhiệt độ giá thể",
           "widgetStyle": {},
           "displayTimewindow": true,
           "actions": {},
-          "alarmStatusList": [],
-          "alarmSeverityList": [],
-          "alarmTypeList": [],
-          "searchPropagatedAlarms": false,
           "configMode": "basic",
-          "alarmFilterConfig": null
+          "alarmFilterConfig": {
+            "statusList": [],
+            "severityList": [],
+            "typeList": [],
+            "searchPropagatedAlarms": false
+          },
+          "datasources": []
         },
-        "id": "alarm-table-widget-group3",
-        "typeAlias": "alarms_table",
-        "bundleAlias": "alarm_widgets"
+        "id": "alarm-table-widget-group3"
+      },
+      "esp1-timeseries-table-widget": {
+        "type": "timeseries",
+        "sizeX": 12,
+        "sizeY": 7,
+        "row": 0,
+        "col": 0,
+        "config": {
+          "datasources": [
+            {
+              "type": "entity",
+              "entityAliasId": "895261cc-8fff-4aec-9bd0-e4140c1cf108",
+              "dataKeys": [
+                {
+                  "name": "temperature",
+                  "type": "timeseries",
+                  "label": "Air Temp (°C)",
+                  "color": "#ef4444",
+                  "settings": {},
+                  "_hash": 0.111
+                },
+                {
+                  "name": "humidity",
+                  "type": "timeseries",
+                  "label": "Air Humidity (%)",
+                  "color": "#3b82f6",
+                  "settings": {},
+                  "_hash": 0.222
+                },
+                {
+                  "name": "co2_ppm",
+                  "type": "timeseries",
+                  "label": "CO2 (ppm)",
+                  "color": "#10b981",
+                  "settings": {},
+                  "_hash": 0.333
+                }
+              ]
+            }
+          ],
+          "showTitle": true,
+          "backgroundColor": "#ffffff",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "16px",
+          "settings": {
+            "showTimestamp": true,
+            "displayPagination": true,
+            "defaultPageSize": 5
+          },
+          "title": "ESP1 — Air Temp & Humidity (DHT20 I²C)"
+        },
+        "typeFullFqn": "system.cards.timeseries_table",
+        "id": "5b7beade-7f4a-518e-5f91-e1c59787156c"
       }
     },
     "states": {
@@ -249,10 +295,10 @@
           "main": {
             "widgets": {
               "41e752a4-b381-4726-96e9-d00fcf30d18a": {
-                "sizeX": 24,
+                "sizeX": 12,
                 "sizeY": 5,
                 "row": 0,
-                "col": 0
+                "col": 12
               },
               "06e9a009-0a5f-4369-a49a-26c12983a24c": {
                 "sizeX": 8,
@@ -267,17 +313,24 @@
                 "sizeY": 5
               },
               "alarm-table-widget-group3": {
-                "row": 10,
+                "row": 15,
                 "col": 0,
                 "sizeX": 24,
                 "sizeY": 6
+              },
+              "esp1-timeseries-table-widget": {
+                "row": 0,
+                "col": 0,
+                "sizeX": 12,
+                "sizeY": 5
               }
             },
             "gridSettings": {
               "backgroundColor": "#f4f6f8",
               "columns": 24,
               "margin": 10,
-              "outerMargin": true
+              "outerMargin": true,
+              "layoutType": "default"
             }
           }
         }
@@ -313,12 +366,12 @@
           "type": "singleEntity",
           "singleEntity": {
             "entityType": "DEVICE",
-            "id": "5fa8f7f0-d7e9-11f1-9301-8d833790fa1b"
+            "id": "cdb06510-d8d1-11f1-9301-8d833790fa1a"
           }
         }
       },
-      "all-farm-devices-alias-id": {
-        "id": "all-farm-devices-alias-id",
+      "ca2516ac-d67d-1798-f3c6-ffb6b5f11419": {
+        "id": "ca2516ac-d67d-1798-f3c6-ffb6b5f11419",
         "alias": "All Farm Devices",
         "filter": {
           "type": "entityList",
@@ -326,14 +379,13 @@
           "entityList": [
             "4fb8f7f0-d7e9-11f1-9301-8d833790fa1a",
             "cf2cd650-d7e9-11f1-9301-8d833790fa1a",
-            "5fa8f7f0-d7e9-11f1-9301-8d833790fa1b"
+            "cdb06510-d8d1-11f1-9301-8d833790fa1a"
           ]
         }
       }
     },
     "timewindow": {
       "displayValue": "",
-      "hideInterval": false,
       "hideAggregation": false,
       "hideAggInterval": false,
       "selectedTab": 0,
@@ -350,9 +402,19 @@
         "type": "NONE",
         "limit": 200
       }
+    },
+    "filters": {},
+    "settings": {
+      "stateControllerId": "entity",
+      "showTitle": false,
+      "showDashboardsSelect": true,
+      "showEntitiesSelect": true,
+      "showDashboardTimewindow": true,
+      "showDashboardExport": true,
+      "toolbarAlwaysOpen": true
     }
   },
-  "name": "IoT System Dashboard \u2014 Group 3",
+  "name": "IoT System Dashboard — Group 3",
   "resources": null,
   "id": {
     "entityType": "DASHBOARD",
@@ -364,6 +426,6 @@
     "id": "48cd26e0-d678-11f1-9301-8d833790fa1a"
   },
   "assignedCustomers": null,
-  "version": 12,
+  "version": 15,
   "externalId": null
 }

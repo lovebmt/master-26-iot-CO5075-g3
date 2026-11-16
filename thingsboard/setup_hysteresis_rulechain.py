@@ -66,9 +66,9 @@ var t = getNum(msg.temperature);
 if (t === null && msg.values) t = getNum(msg.values.temperature);
 if (t !== null) {
     // Alarm High/Low
-    if (t > 30.0) {
+    if (t > 29.0) {
         relations.push('AirTempHigh');
-    } else if (t <= 29.0) {
+    } else if (t <= 27.0) {
         relations.push('ClearAirTempHigh');
     }
     
@@ -81,7 +81,7 @@ if (t !== null) {
     // Air Conditioner Automatic Control
     if (t > 29.0) {
         relations.push('AirConOn');
-    } else if (t < 26.0) {
+    } else if (t < 27.0) {
         relations.push('AirConOff');
     }
 }
@@ -103,9 +103,11 @@ if (h !== null) {
     }
 }
 
-// 3. Soil Temperature (ESP2 / ESP3)
+// 3. Soil Temperature (ESP2 / ESP3 / PT100)
 var st = getNum(msg.soil_temp);
+if (st === null) st = getNum(msg.soil_temp_c);
 if (st === null && msg.values) st = getNum(msg.values.soil_temp);
+if (st === null && msg.values) st = getNum(msg.values.soil_temp_c);
 if (st !== null) {
     if (st > 32.0) {
         relations.push('SoilTempHigh');
@@ -117,6 +119,13 @@ if (st !== null) {
         relations.push('SoilTempLow');
     } else if (st >= 21.0) {
         relations.push('ClearSoilTempLow');
+    }
+
+    // Air Conditioner Automatic Control for Soil Temp (PT100)
+    if (st > 29.0) {
+        relations.push('AirConOn');
+    } else if (st < 27.0) {
+        relations.push('AirConOff');
     }
 }
 
@@ -220,8 +229,8 @@ return relations;
         "name": "Prepare RPC AirCon ON",
         "configuration": {
             "scriptLang": "JS",
-            "jsScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};",
-            "tbelScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};"
+            "jsScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};",
+            "tbelScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};"
         },
         "additionalInfo": {"layoutX": 1450, "layoutY": 540}
     }
@@ -235,8 +244,8 @@ return relations;
         "name": "Prepare RPC AirCon OFF",
         "configuration": {
             "scriptLang": "JS",
-            "jsScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};",
-            "tbelScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};"
+            "jsScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};",
+            "tbelScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};"
         },
         "additionalInfo": {"layoutX": 1450, "layoutY": 620}
     }

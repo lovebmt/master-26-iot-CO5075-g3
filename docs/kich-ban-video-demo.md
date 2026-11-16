@@ -99,12 +99,12 @@
      - *Kích hoạt ngưỡng cao:* Thổi hơi nóng vào DHT20 cho nhiệt độ vượt 29.0°C:
        + Bảng Alarms trên CoreIOT lập tức xuất hiện cảnh báo đỏ CRITICAL: Air Temp High (T13).
        + RuleChain tự phát RPC set_light: true -> Gateway chuyển tiếp -> ESP2 kích hoạt rơ-le bật máy lạnh, màn hình LCD đổi sang Air.Con: ON.
-     - *Dải trễ giữ nguyên:* Để nhiệt độ nguội dần từ 29°C xuống 27°C (nằm trong dải 26–29°C) -> Máy lạnh vẫn tiếp tục chạy, không bị ngắt chập chờn.
-     - *Kích hoạt ngưỡng thấp:* Nhiệt độ hạ xuống < 26.0°C:
+     - *Dải trễ giữ nguyên:* Để nhiệt độ nguội dần từ 29°C xuống 27°C (nằm trong dải 27–29°C) -> Máy lạnh vẫn tiếp tục chạy, không bị ngắt chập chờn.
+     - *Kích hoạt ngưỡng thấp:* Nhiệt độ hạ xuống < 27.0°C:
        + RuleChain tự phát RPC set_light: false ngắt máy lạnh.
        + Bảng Alarms tự động Clear giải phóng cảnh báo về trạng thái xanh an toàn.
 - **Thuyết minh:**
-  > "Nền tảng CoreIOT ThingsBoard Community Edition được nhóm tự triển khai trên máy chủ cá nhân, kết nối mã hóa qua mạng Tailscale Mesh VPN với tên miền fuvi-server.tailc75d93.ts.net qua cổng 10000 an toàn. Giao diện Dashboard Group 3 hiển thị trực quan thông số từ ba trạm thiết bị. Trọng tâm là Root Rule Chain 24 nodes tích hợp giải thuật ngưỡng trễ Hysteresis 3 độ C. Khi tác động nhiệt độ không khí vượt 29 độ, bảng Alarms lập tức phát sinh cảnh báo Critical Air Temp High, đồng thời phát lệnh RPC kích hoạt máy lạnh trên ESP2. Khi nhiệt độ hạ về dải an toàn từ 26 đến 29 độ, máy lạnh duy trì hoạt động ổn định, tránh rung rơ-le. Chỉ khi nhiệt độ giảm sâu dưới 26 độ C, RuleChain mới phát lệnh tắt máy lạnh và tự động giải phóng cảnh báo về trạng thái an toàn."
+  > "Nền tảng CoreIOT ThingsBoard Community Edition được nhóm tự triển khai trên máy chủ cá nhân, kết nối mã hóa qua mạng Tailscale Mesh VPN với tên miền fuvi-server.tailc75d93.ts.net qua cổng 10000 an toàn. Giao diện Dashboard Group 3 hiển thị trực quan thông số từ ba trạm thiết bị. Trọng tâm là Root Rule Chain 24 nodes tích hợp giải thuật ngưỡng trễ Hysteresis 3 độ C. Khi tác động nhiệt độ không khí vượt 29 độ, bảng Alarms lập tức phát sinh cảnh báo Critical Air Temp High, đồng thời phát lệnh RPC kích hoạt máy lạnh trên ESP2. Khi nhiệt độ hạ về dải an toàn từ 27 đến 29 độ, máy lạnh duy trì hoạt động ổn định, tránh rung rơ-le. Chỉ khi nhiệt độ hạ xuống dưới 27 độ C, RuleChain mới phát lệnh tắt máy lạnh và tự động giải phóng cảnh báo về trạng thái an toàn."
 
 ---
 
@@ -238,8 +238,8 @@
 > Trái tim của hệ thống là Root Rule Chain gồm 24 nodes tích hợp giải thuật dải trễ Hysteresis 3 độ C nhằm bảo vệ máy lạnh khỏi hiện tượng đóng ngắt liên tục.
 > Bây giờ, chúng tôi tác động nhiệt vào cảm biến DHT20:
 > Khi nhiệt độ không khí vượt ngưỡng cài đặt 29 độ C: Trên giao diện Dashboard, bảng Alarms Table lập tức kích hoạt cảnh báo đỏ Critical Air Temp High. Cùng lúc đó, node Switch rẽ nhánh phát lệnh RPC set_light bật máy lạnh. Lệnh được Gateway định tuyến tức thì xuống ESP2, rơ-le đóng mạch và màn hình LCD chuyển sang Air.Con ON.
-> Tiếp theo, khi nhiệt độ nguội dần và dao động trong dải trễ an toàn từ 26 đến 29 độ C: hệ thống vẫn duy trì máy lạnh hoạt động liên tục, triệt tiêu hoàn toàn hiện tượng rung lắc rơ-le khi nhiệt độ mấp mé quanh ngưỡng.
-> Chỉ khi nhiệt độ hạ hẳn xuống dưới 26 độ C: RuleChain mới rẽ nhánh phát lệnh RPC tắt máy lạnh và tự động chuyển bảng Alarms sang trạng thái Clear màu xanh an toàn."
+> Tiếp theo, khi nhiệt độ nguội dần và dao động trong dải trễ an toàn từ 27 đến 29 độ C: hệ thống vẫn duy trì máy lạnh hoạt động liên tục, triệt tiêu hoàn toàn hiện tượng rung lắc rơ-le khi nhiệt độ mấp mé quanh ngưỡng.
+> Chỉ khi nhiệt độ hạ hẳn xuống dưới 27 độ C: RuleChain mới rẽ nhánh phát lệnh RPC tắt máy lạnh và tự động chuyển bảng Alarms sang trạng thái Clear màu xanh an toàn."
 
 ---
 

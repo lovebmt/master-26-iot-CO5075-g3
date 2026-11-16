@@ -1,5 +1,7 @@
 services:
   nanomq:
     image: emqx/nanomq:latest
+    container_name: nanomq
+    restart: unless-stopped
     ports:
-      - "127.0.0.1:1883:1883"
+      - "1883:1883"
