@@ -77,6 +77,17 @@ static bool get_touch_point(uint16_t &tx, uint16_t &ty) {
   return true;
 }
 
+void forward_ble_telemetry(const char *device_id, float temp) {
+  if (mqttClient.connected()) {
+    char topic[64];
+    snprintf(topic, sizeof(topic), "iot/%s/telemetry", device_id);
+    char payload[96];
+    snprintf(payload, sizeof(payload), "{\"values\":{\"soil_temp\":%.1f}}", temp);
+    mqttClient.publish(topic, payload);
+    Serial.printf("[BLE BRIDGE -> GATEWAY] Forwarded node '%s' to %s: %s\n", device_id, topic, payload);
+  }
+}
+
 void send_telemetry() {
   if (mqttClient.connected()) {
     char payload[128];
@@ -452,15 +463,22 @@ static void on_ble_notify(NimBLERemoteCharacteristic *pChar, uint8_t *pData,
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, pData, length);
   if (!err) {
+    const char *node_id = "esp3";
+    if (doc["id"].is<const char *>()) {
+      node_id = doc["id"].as<const char *>();
+    } else if (doc["device"].is<const char *>()) {
+      node_id = doc["device"].as<const char *>();
+    }
+
     if (doc["soil_temp"].is<float>()) {
       current_soil_temp = doc["soil_temp"].as<float>();
-      Serial.printf("[BLE PARSE] Soil Temperature (PT100): %.1f C\n",
-                    current_soil_temp);
+      Serial.printf("[BLE PARSE] Node %s Soil Temperature (PT100): %.1f C\n", node_id, current_soil_temp);
+      forward_ble_telemetry(node_id, current_soil_temp);
       send_telemetry();
     } else if (doc["tds_ppm"].is<float>()) {
       current_soil_temp = doc["tds_ppm"].as<float>();
-      Serial.printf("[BLE PARSE] Soil Temperature (Fallback): %.1f C\n",
-                    current_soil_temp);
+      Serial.printf("[BLE PARSE] Node %s Soil Temperature (Fallback): %.1f C\n", node_id, current_soil_temp);
+      forward_ble_telemetry(node_id, current_soil_temp);
       send_telemetry();
     }
   } else {
