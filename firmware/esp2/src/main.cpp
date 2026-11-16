@@ -109,10 +109,12 @@ void send_telemetry() {
 void set_light(bool on) {
   bool changed = (current_light != on);
   current_light = on;
-  digitalWrite(PIN_LED, on ? HIGH : LOW);
-  Serial.printf("[AC/LED] Hardware Output -> %s | GPIO %d = %s (Voltage: %s)\n",
+  digitalWrite(PIN_LED, on ? HIGH : LOW); // GPIO 27 external relay (Active-High)
+  digitalWrite(4, on ? LOW : HIGH);       // GPIO 4 CYD Onboard RED LED (Active-Low)
+  digitalWrite(16, on ? LOW : HIGH);      // GPIO 16 CYD Onboard GREEN LED (Active-Low)
+  Serial.printf("[AC/LED] Hardware Output -> %s | GPIO %d = %s | Onboard LED (GPIO 4, 16) = %s\n",
                 on ? "ON" : "OFF", PIN_LED, on ? "HIGH" : "LOW",
-                on ? "3.3V" : "0V");
+                on ? "LIT (LOW)" : "OFF (HIGH)");
   if (changed) {
     send_telemetry();
   }
