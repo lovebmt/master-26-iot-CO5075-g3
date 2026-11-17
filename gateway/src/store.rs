@@ -218,7 +218,7 @@ impl Store {
     }
 
     pub async fn history_points(&self, device_id: &str, metric: &str, limit: i64) -> Result<Vec<(i64, f64)>> {
-        let rows: Vec<(i64, f64)> = sqlx::query_as("SELECT ts_ms, value FROM telemetry_history WHERE device_id = ? AND metric = ? ORDER BY ts_ms ASC LIMIT ?")
+        let rows: Vec<(i64, f64)> = sqlx::query_as("SELECT ts_ms, value FROM (SELECT id, ts_ms, value FROM telemetry_history WHERE device_id = ? AND metric = ? ORDER BY ts_ms DESC, id DESC LIMIT ?) ORDER BY ts_ms ASC, id ASC")
             .bind(device_id).bind(metric).bind(limit).fetch_all(&self.pool).await?;
         Ok(rows)
     }
@@ -336,6 +336,22 @@ mod tests {
         assert_eq!(pts.len(), 2);
         assert_eq!(pts[0], (100, 620.0));
         assert_eq!(pts[1], (200, 750.0));
+    }
+
+    #[tokio::test]
+    async fn history_points_returns_most_recent_limit_in_time_order() {
+        let store = store().await;
+        for ts in 1..=201 {
+            store
+                .save_telemetry(&sample("esp1", ts, i64::try_from(ts).unwrap()), ts as i64)
+                .await
+                .unwrap();
+        }
+
+        let points = store.history_points("esp1", "co2_ppm", 200).await.unwrap();
+        assert_eq!(points.len(), 200);
+        assert_eq!(points.first(), Some(&(2, 2.0)));
+        assert_eq!(points.last(), Some(&(201, 201.0)));
     }
 
     #[tokio::test]

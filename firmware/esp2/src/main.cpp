@@ -14,7 +14,7 @@
 #define FW_VERSION "1.0.3"
 #define WIFI_SSID "Fuvitech"
 #define WIFI_PASS "fuvitech.vn"
-#define GATEWAY_HOST "192.168.1.19"
+#define GATEWAY_HOST "192.168.1.18"
 #define TDS_TOPIC "iot/esp2/telemetry"
 #define CMD_TOPIC "iot/esp2/command"
 #define RESULT_TOPIC "iot/esp2/result"

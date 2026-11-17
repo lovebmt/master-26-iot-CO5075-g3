@@ -1,4 +1,5 @@
 use std::{
+    process::Command,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -70,6 +71,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/firmware/esp2.bin", get(serve_firmware))
         .route("/firmware/version.json", get(serve_firmware_version))
         .route("/devices/:device_id/chart", get(device_chart))
+        .route("/devices/:device_id/chart/data", get(device_chart_data))
         .route("/queue/clean", post(clean_queue))
         .route("/settings/aggregation", post(set_aggregation))
         .route("/static/style.css", get(stylesheet))
@@ -127,13 +129,7 @@ async fn device_chart(
     if !is_authenticated(&headers) {
         return redirect_to_login();
     }
-    let metrics = s.store.history_metrics(&device_id).await.unwrap_or_default();
-    let mut series_map = serde_json::Map::new();
-    for m in &metrics {
-        let pts = s.store.history_points(&device_id, m, 200).await.unwrap_or_default();
-        let pts_val: Vec<Value> = pts.into_iter().map(|(ts, val)| serde_json::json!([ts, val])).collect();
-        series_map.insert(m.clone(), Value::Array(pts_val));
-    }
+    let (metrics, series_map) = chart_series(&s.store, &device_id).await;
     let series_json = serde_json::to_string(&series_map).unwrap_or_else(|_| "{}".into());
     match s.env.get_template("chart.html") {
         Ok(tmpl) => match tmpl.render(context!(device_id => device_id, metrics => metrics, series_json => series_json)) {
@@ -142,6 +138,35 @@ async fn device_chart(
         },
         Err(e) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
+}
+
+async fn device_chart_data(
+    State(s): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(device_id): Path<String>,
+) -> Response {
+    if !is_authenticated(&headers) {
+        return redirect_to_login();
+    }
+    let (_, series) = chart_series(&s.store, &device_id).await;
+    axum::Json(Value::Object(series)).into_response()
+}
+
+async fn chart_series(
+    store: &Store,
+    device_id: &str,
+) -> (Vec<String>, serde_json::Map<String, Value>) {
+    let metrics = store.history_metrics(device_id).await.unwrap_or_default();
+    let mut series_map = serde_json::Map::new();
+    for metric in &metrics {
+        let points = store.history_points(device_id, metric, 200).await.unwrap_or_default();
+        let values = points
+            .into_iter()
+            .map(|(ts, value)| serde_json::json!([ts, value]))
+            .collect();
+        series_map.insert(metric.clone(), Value::Array(values));
+    }
+    (metrics, series_map)
 }
 
 async fn dashboard(State(s): State<Arc<AppState>>, headers: HeaderMap) -> Response {
@@ -206,19 +231,30 @@ async fn trigger_ota_post(
     drop(counter);
 
     let force = form.force.as_deref() == Some("true");
-    let payload = serde_json::json!({
-        "id": cid,
-        "method": "ota_update",
-        "params": {
-            "url": crate::config::default_firmware_url(),
-            "version": "v1.0.1",
-            "force": force
-        }
-    })
-    .to_string();
-
-    tracing::info!(force = force, payload = %payload, "[Web Control] Dispatched OTA command to ESP2");
     if let Some(client) = &s.local_client {
+        let version = match sync_ota_package_from_coreiot().await {
+            Ok(version) => version,
+            Err(error) => {
+                tracing::error!(reason = %error, "[OTA Sync] CoreIOT sync failed; OTA command not sent");
+                return (
+                    StatusCode::BAD_GATEWAY,
+                    "CoreIOT firmware sync failed; OTA command was not sent",
+                )
+                    .into_response();
+            }
+        };
+        let payload = serde_json::json!({
+            "id": cid,
+            "method": "ota_update",
+            "params": {
+                "url": crate::config::default_firmware_url(),
+                "version": version,
+                "force": force
+            }
+        })
+        .to_string();
+
+        tracing::info!(force = force, payload = %payload, "[Web Control] Dispatched OTA command to ESP2");
         let _ = client
             .publish(
                 "iot/esp2/command",
@@ -230,6 +266,54 @@ async fn trigger_ota_post(
     }
 
     render_devices_fragment(&s).await.into_response()
+}
+
+fn ota_version_from_metadata(metadata: &str) -> anyhow::Result<String> {
+    let value: Value = serde_json::from_str(metadata)?;
+    let version = value
+        .get("version")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|version| !version.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("OTA metadata has no version"))?;
+    Ok(version.to_owned())
+}
+
+async fn sync_ota_package_from_coreiot() -> anyhow::Result<String> {
+    let metadata_path = [
+        "gateway/firmware/version.json",
+        "firmware/version.json",
+        "../gateway/firmware/version.json",
+    ]
+    .into_iter()
+    .find(|path| std::path::Path::new(path).exists())
+    .ok_or_else(|| anyhow::anyhow!("OTA metadata file not found"))?;
+    let cached = tokio::fs::read_to_string(metadata_path).await?;
+    let target_version = ota_version_from_metadata(&cached)?;
+
+    let expected_version = target_version.clone();
+    let status = tokio::task::spawn_blocking(move || {
+        let script = if std::path::Path::new("scripts/sync_coreiot_firmware.py").exists() {
+            "scripts/sync_coreiot_firmware.py"
+        } else {
+            "gateway/scripts/sync_coreiot_firmware.py"
+        };
+        Command::new("python3")
+            .arg(script)
+            .arg(&target_version)
+            .status()
+    })
+    .await??;
+    if !status.success() {
+        anyhow::bail!("CoreIOT sync script exited with {status}");
+    }
+
+    let synced = tokio::fs::read_to_string(metadata_path).await?;
+    let synced_version = ota_version_from_metadata(&synced)?;
+    if synced_version != expected_version {
+        anyhow::bail!("synced OTA version changed unexpectedly");
+    }
+    Ok(synced_version)
 }
 
 async fn serve_firmware() -> Response {
@@ -392,9 +476,19 @@ async fn build_rows(s: &Arc<AppState>) -> Vec<DeviceRow> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use axum::{body::to_bytes, http::Request};
     use minijinja::Environment;
     use tower::ServiceExt;
+
+    #[test]
+    fn ota_sync_target_comes_from_cached_coreiot_metadata() {
+        assert_eq!(
+            ota_version_from_metadata(r#"{"version":"1.0.5"}"#).unwrap(),
+            "1.0.5"
+        );
+        assert!(ota_version_from_metadata(r#"{"title":"ESP2"}"#).is_err());
+    }
 
     fn test_env() -> Environment<'static> {
         let mut env = Environment::new();
@@ -427,7 +521,7 @@ mod tests {
             store,
             devices: vec![
                 DeviceConfig { local_id: "esp1".into(), name: "ESP1 CO2".into(), profile: "CO2".into() },
-                DeviceConfig { local_id: "esp2".into(), name: "ESP2 TDS".into(), profile: "TDS".into() },
+                DeviceConfig { local_id: "esp2".into(), name: "ESP2".into(), profile: "esp_hub".into() },
             ],
             env: test_env(),
             id_counter: Arc::new(Mutex::new(0)),
@@ -600,6 +694,34 @@ mod tests {
         let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
         let html = std::str::from_utf8(&body).unwrap();
         assert!(html.contains("Device History: esp1"));
+    }
+
+    #[tokio::test]
+    async fn chart_data_endpoint_returns_latest_sample() {
+        let state = test_state().await;
+        let sample = crate::telemetry::parse(
+            "esp1",
+            br#"{"ts":1730000000000,"values":{"co2_ppm":620}}"#,
+            &state.devices,
+        )
+        .unwrap();
+        state.store.save_telemetry(&sample, 1_730_000_000_000).await.unwrap();
+
+        let app = router(state);
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri("/devices/esp1/chart/data")
+                    .header("cookie", "auth_session=admin_logged_in")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+        let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let data: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(data["co2_ppm"][0], serde_json::json!([1_730_000_000_000i64, 620.0]));
     }
 
     #[tokio::test]

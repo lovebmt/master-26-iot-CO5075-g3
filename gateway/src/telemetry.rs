@@ -72,9 +72,7 @@ fn parse_at(
     let mut normalized = Map::new();
     for (key, value) in values {
         match (device_id, key.as_str()) {
-            ("esp1", "co2_ppm")
-            | ("esp2", "tds_ppm")
-            | ("esp3", "tds_ppm") => {
+            ("esp1", "co2_ppm") => {
                 value
                     .as_f64()
                     .filter(|number| number.is_finite() && *number >= 0.0)
@@ -133,8 +131,8 @@ mod tests {
             },
             DeviceConfig {
                 local_id: "esp2".into(),
-                name: "TDS Sensor".into(),
-                profile: "TDS".into(),
+                name: "ESP2".into(),
+                profile: "esp_hub".into(),
             },
         ]
     }
@@ -154,13 +152,13 @@ mod tests {
 
         let esp2 = parse_at(
             "esp2",
-            br#"{"values":{"tds_ppm":310,"light_on":true}}"#,
+            br#"{"values":{"soil_temp":27.0,"light_on":true}}"#,
             &devices(),
             1,
         )
         .unwrap();
         assert_eq!(esp2.timestamp_ms, 1);
-        assert_eq!(esp2.values["tds_ppm"], 310);
+        assert_eq!(esp2.values["soil_temp"], 27.0);
         assert_eq!(esp2.values["light_on"], true);
     }
 
@@ -200,6 +198,13 @@ mod tests {
         for (case, device, payload) in invalid {
             assert!(parse_at(device, payload, &devices(), 1).is_err(), "accepted {case}");
         }
+        assert!(parse_at(
+            "esp2",
+            br#"{"values":{"tds_ppm":480}}"#,
+            &devices(),
+            1
+        )
+        .is_err());
     }
 
     #[test]

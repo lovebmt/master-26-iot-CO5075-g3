@@ -22,7 +22,7 @@
 // WiFi & MQTT Fallback Configuration
 // ==========================================
 #define MQTT_TOPIC_ESP3 "iot/esp3/telemetry"
-#define MQTT_BROKER "192.168.1.19"
+#define MQTT_BROKER "192.168.1.18"
 #define MQTT_PORT 1883
 
 static char wifi_ssid[33] = "Fuvitech";

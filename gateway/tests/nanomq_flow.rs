@@ -19,7 +19,7 @@ async fn ingests_valid_telemetry_and_continues_after_malformed_message() {
     let port = url.port().unwrap_or(1883);
     let devices = [
         DeviceConfig { local_id: "esp1".into(), name: "ESP1 CO2".into(), profile: "CO2".into() },
-        DeviceConfig { local_id: "esp2".into(), name: "ESP2 TDS".into(), profile: "TDS".into() },
+        DeviceConfig { local_id: "esp2".into(), name: "ESP2".into(), profile: "esp_hub".into() },
     ];
     let store = Store::connect("sqlite::memory:").await.unwrap();
     store.set_aggregation_window(0);

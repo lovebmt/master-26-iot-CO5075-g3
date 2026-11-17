@@ -159,7 +159,7 @@ mod tests {
             ("TB_DEVICE_ESP1", "ESP1"),
             ("TB_PROFILE_ESP1", "CO2 Sensor"),
             ("TB_DEVICE_ESP2", "ESP2"),
-            ("TB_PROFILE_ESP2", "TDS Sensor"),
+            ("TB_PROFILE_ESP2", "esp_hub"),
             ("TB_DEVICE_ESP3", "ESP3"),
             ("TB_PROFILE_ESP3", "esp_ble"),
             ("DATABASE_URL", "sqlite://gateway.db?mode=rwc"),
@@ -182,7 +182,7 @@ mod tests {
         assert_eq!(config.devices[0].profile, "CO2 Sensor");
         assert_eq!(config.devices[1].local_id, "esp2");
         assert_eq!(config.devices[1].name, "ESP2");
-        assert_eq!(config.devices[1].profile, "TDS Sensor");
+        assert_eq!(config.devices[1].profile, "esp_hub");
         assert_eq!(config.devices[2].local_id, "esp3");
         assert_eq!(config.devices[2].name, "ESP3");
         assert_eq!(config.devices[2].profile, "esp_ble");

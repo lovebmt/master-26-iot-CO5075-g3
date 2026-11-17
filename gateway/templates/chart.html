@@ -32,7 +32,7 @@
             📈 Device History: {{ device_id }}
           </h1>
           <div style="font-size: 0.85rem; color: var(--text-muted);">
-            Node Identifier: <code>{{ device_id }}</code> &bull; Max 200 data points per metric
+            Node Identifier: <code>{{ device_id }}</code> &bull; Latest 200 points per metric &bull; refreshes every 5 seconds
           </div>
         </div>
       </div>
@@ -56,7 +56,7 @@
   </div>
 
   <script>
-    const rawData = {{ series_json|safe }};
+    let rawData = {{ series_json|safe }};
     const colors = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#0891b2', '#e11d48'];
     let chart = null;
 
@@ -107,7 +107,18 @@
     }
 
     function updateChart() { renderChart(); }
-    window.onload = renderChart;
+    async function refreshChart() {
+      try {
+        const response = await fetch(`${window.location.pathname}/data`, { headers: { Accept: 'application/json' } });
+        if (!response.ok) return;
+        rawData = await response.json();
+        renderChart();
+      } catch (_) {}
+    }
+    window.onload = () => {
+      renderChart();
+      window.setInterval(refreshChart, 5000);
+    };
   </script>
 </body>
 </html>
