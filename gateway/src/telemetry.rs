@@ -27,6 +27,41 @@ pub fn parse(
     parse_at(device_id, payload, devices, now_ms)
 }
 
+/// Normalize the supported local MQTT formats using the gateway receive time.
+/// Tasmota's local `Time` string is deliberately not treated as a UTC timestamp.
+pub fn parse_mqtt_at(
+    topic: &str,
+    payload: &[u8],
+    devices: &[DeviceConfig],
+    received_at_ms: u64,
+) -> Result<NormalizedTelemetry> {
+    if topic == "tele/g3-esp1/SENSOR" {
+        let document: Value = serde_json::from_slice(payload)
+            .map_err(|_| anyhow!("invalid Tasmota JSON"))?;
+        if document.get("TempUnit").and_then(Value::as_str) != Some("C") {
+            bail!("Tasmota TempUnit must be C");
+        }
+        let sensor = document.get("DHT20")
+            .and_then(Value::as_object)
+            .ok_or_else(|| anyhow!("Tasmota DHT20 must be an object"))?;
+        let normalized = serde_json::json!({
+            "values": {
+                "temperature": sensor.get("Temperature"),
+                "humidity": sensor.get("Humidity"),
+            }
+        });
+        return parse_at("esp1", &serde_json::to_vec(&normalized)?, devices, received_at_ms);
+    }
+
+    let device_id = match topic {
+        "iot/esp1/telemetry" => "esp1",
+        "iot/esp2/telemetry" => "esp2",
+        "iot/esp3/telemetry" => "esp3",
+        _ => bail!("unsupported telemetry topic: {topic}"),
+    };
+    parse_at(device_id, payload, devices, received_at_ms)
+}
+
 fn parse_at(
     device_id: &str,
     payload: &[u8],
@@ -109,7 +144,7 @@ fn parse_at(
 
 #[cfg(test)]
 mod tests {
-    use super::parse_at;
+    use super::{parse_at, parse_mqtt_at};
     use crate::config::DeviceConfig;
 
     fn devices() -> [DeviceConfig; 2] {
@@ -160,7 +195,7 @@ mod tests {
             (
                 "unknown measurement",
                 "esp1",
-                br#"{"values":{"humidity":1}}"#,
+                br#"{"values":{"pressure":1}}"#,
             ),
             ("missing values", "esp1", br#"{"ts":1}"#),
             ("empty values", "esp1", br#"{"values":{}}"#),
@@ -194,6 +229,58 @@ mod tests {
     fn falls_back_to_injected_receive_timestamp() {
         let item = parse_at("esp1", br#"{"values":{"co2_ppm":620}}"#, &devices(), 42).unwrap();
         assert_eq!(item.timestamp_ms, 42);
+    }
+
+    #[test]
+    fn maps_tasmota_dht20_to_esp1_using_receive_time() {
+        let payload = br#"{"Time":"2026-11-05T03:10:10","DHT20":{"Temperature":28.53,"Humidity":63.06},"TempUnit":"C"}"#;
+        let item = parse_mqtt_at("tele/g3-esp1/SENSOR", payload, &devices(), 42).unwrap();
+        assert_eq!(item.device_id, "esp1");
+        assert_eq!(item.thingsboard_name, devices()[0].name);
+        assert_eq!(item.timestamp_ms, 42);
+        assert_eq!(item.values.len(), 2);
+        assert_eq!(item.values["temperature"], 28.53);
+        assert_eq!(item.values["humidity"], 63.06);
+    }
+
+    #[test]
+    fn rejects_incomplete_invalid_and_non_celsius_tasmota_samples() {
+        for payload in [
+            "{",
+            r#"{"TempUnit":"C"}"#,
+            r#"{"DHT20":{},"TempUnit":"C"}"#,
+            r#"{"DHT20":{"Temperature":28},"TempUnit":"C"}"#,
+            r#"{"DHT20":{"Temperature":"28","Humidity":60},"TempUnit":"C"}"#,
+            r#"{"DHT20":{"Temperature":null,"Humidity":60},"TempUnit":"C"}"#,
+            r#"{"DHT20":{"Temperature":200,"Humidity":60},"TempUnit":"C"}"#,
+            r#"{"DHT20":{"Temperature":28,"Humidity":101},"TempUnit":"C"}"#,
+            r#"{"DHT20":{"Temperature":28,"Humidity":-1},"TempUnit":"C"}"#,
+            r#"{"DHT20":{"Temperature":82,"Humidity":60},"TempUnit":"F"}"#,
+            r#"{"DHT20":{"Temperature":28,"Humidity":60}}"#,
+        ] {
+            assert!(parse_mqtt_at("tele/g3-esp1/SENSOR", payload.as_bytes(), &devices(), 42).is_err(),
+                "accepted invalid Tasmota sample: {payload}");
+        }
+    }
+
+    #[test]
+    fn preserves_normalized_topics_and_rejects_wrong_topic_formats() {
+        let mut configured = devices().to_vec();
+        configured.push(DeviceConfig {
+            local_id: "esp3".into(), name: "ESP3".into(), profile: "esp_ble".into(),
+        });
+        for (topic, payload, id) in [
+            ("iot/esp1/telemetry", r#"{"ts":7,"values":{"temperature":28,"humidity":60}}"#, "esp1"),
+            ("iot/esp2/telemetry", r#"{"ts":7,"values":{"soil_temp":27,"light_on":false}}"#, "esp2"),
+            ("iot/esp3/telemetry", r#"{"ts":7,"values":{"soil_temp":27}}"#, "esp3"),
+        ] {
+            let item = parse_mqtt_at(topic, payload.as_bytes(), &configured, 42).unwrap();
+            assert_eq!(item.device_id, id);
+            assert_eq!(item.timestamp_ms, 7);
+        }
+        let raw = br#"{"DHT20":{"Temperature":28,"Humidity":60},"TempUnit":"C"}"#;
+        assert!(parse_mqtt_at("iot/esp1/telemetry", raw, &configured, 42).is_err());
+        assert!(parse_mqtt_at("tele/another-device/SENSOR", raw, &configured, 42).is_err());
     }
 
     #[test]

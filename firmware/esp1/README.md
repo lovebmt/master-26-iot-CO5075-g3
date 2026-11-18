@@ -9,4 +9,4 @@ ESP1 dùng YoloUNO ESP32-S3, DHT20 và Tasmota 16.0.0. Trình đọc Berry lấy
 
 Gateway đăng ký `tele/g3-esp1/SENSOR` và `iot/esp1/telemetry`. Dùng [bản tin MQTT thật](examples/mqtt-sensor-mau.json) để ánh xạ `temperature` (°C) và `humidity` (%RH) đẩy lên CoreIOT.
 
-Đã kiểm chứng đọc cảm biến DHT20 trên bo và gửi bản tin đo đạc tới broker nhóm, kích hoạt đầy đủ chuỗi quy tắc RuleChain cảnh báo Hysteresis và điều khiển tự động máy lạnh Air.Con trên ESP2.
+Đã kiểm chứng đọc DHT20 trên bo và gửi bản tin MQTT trong phép thử riêng. Gateway Rust hỗ trợ chuyển bản tin gốc Tasmota thành các trường `temperature` và `humidity`; các phép thử phần mềm kiểm tra chuyển đổi, định tuyến và lưu dữ liệu. Kết quả này chưa thay thế phép thử tích hợp với cảm biến thật và điều khiển ESP2 qua RuleChain.

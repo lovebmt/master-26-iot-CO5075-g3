@@ -6,7 +6,12 @@ use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 
 use crate::{config::DeviceConfig, store::Store, telemetry};
 
-const TOPICS: [&str; 3] = ["iot/esp1/telemetry", "iot/esp2/telemetry", "iot/esp3/telemetry"];
+const TOPICS: [&str; 4] = [
+    "iot/esp1/telemetry",
+    "iot/esp2/telemetry",
+    "iot/esp3/telemetry",
+    "tele/g3-esp1/SENSOR",
+];
 
 pub struct LocalMqtt {
     task: JoinHandle<()>,
@@ -46,12 +51,6 @@ impl LocalMqtt {
                         }
                     }
                     Ok(Event::Incoming(Packet::Publish(message))) => {
-                        let Some(device_id) = (match message.topic.as_str() {
-                            "iot/esp1/telemetry" => Some("esp1"),
-                            "iot/esp2/telemetry" => Some("esp2"),
-                            "iot/esp3/telemetry" => Some("esp3"),
-                            _ => None,
-                        }) else { continue };
                         let received_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
                             Ok(duration) => duration.as_millis().try_into().unwrap_or(i64::MAX),
                             Err(_) => {
@@ -59,7 +58,12 @@ impl LocalMqtt {
                                 continue;
                             }
                         };
-                        match telemetry::parse(device_id, &message.payload, &devices) {
+                        match telemetry::parse_mqtt_at(
+                            &message.topic,
+                            &message.payload,
+                            &devices,
+                            received_at_ms as u64,
+                        ) {
                             Ok(item) => {
                                 if let Err(error) = store.save_telemetry(&item, received_at_ms).await {
                                     tracing::warn!(topic = %message.topic, reason = %error, "failed to store local MQTT telemetry");
