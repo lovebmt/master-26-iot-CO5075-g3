@@ -19,7 +19,10 @@ Monolith PC IoT Gateway phục vụ tiêu chí bài tập lớn **T08** (CoreIOT
 ## 2. Giao thức MQTT (MQTT Contract)
 
 ### 2.1. Telemetry nội bộ (Local NanoMQ)
-* **ESP1:** `iot/esp1/telemetry` $\rightarrow$ `{"ts": <epoch_ms>, "values": {"co2_ppm": 620}}` (hoặc `tele/g3-esp1/SENSOR`).
+* **ESP1 trên Tasmota:** `tele/g3-esp1/SENSOR` → `{"Time":"2026-11-05T03:10:10","DHT20":{"Temperature":28.53,"Humidity":63.06},"TempUnit":"C"}`.
+  * Gateway ánh xạ `DHT20.Temperature` sang `values.temperature` (°C) và `DHT20.Humidity` sang `values.humidity` (%RH), rồi đưa vào cùng luồng lưu SQLite và gửi ThingsBoard của các thiết bị còn lại.
+  * Gateway dùng thời điểm nhận bản tin, không diễn giải chuỗi `Time` của Tasmota thành giờ UTC. Bản tin thiếu số đo, sai kiểu, ngoài dải hoặc không ghi `TempUnit: "C"` bị loại.
+  * Chủ đề chuẩn hóa `iot/esp1/telemetry` vẫn nhận `{"values":{"temperature":28.53,"humidity":63.06}}`, kèm `ts` mili giây Unix nếu có. Kịch bản giả lập dùng chủ đề này để kiểm thử, không thay thế minh chứng cảm biến thật. Khi chạy ESP1 thật, dừng kịch bản giả lập để tránh trộn số đo của cùng thiết bị.
 * **ESP2:** `iot/esp2/telemetry` $\rightarrow$ `{"values": {"soil_temp": 27.0, "light_on": false, "fw_version": "1.0.2"}}`.
   * Trường `soil_temp` (Nhiệt độ đất PT100 Modbus): Số thực hợp lệ trong dải $-50^\circ\text{C} \le \text{temp} \le 150^\circ\text{C}$.
   * Trường `light_on`: Kiểu Boolean (`true`/`false`).
@@ -65,6 +68,8 @@ Gateway tích hợp sẵn HTTP Server phục vụ file nhị phân firmware cho 
 
 ## 4. Hướng dẫn Khởi chạy & Kiểm thử
 
+Dùng Rust/Cargo 1.88 trở lên để tương thích với các thư viện trong `Cargo.lock`.
+
 ### 4.1. Khởi động Broker NanoMQ
 ```bash
 cd gateway
@@ -87,4 +92,10 @@ Truy cập Dashboard tại `http://127.0.0.1:8080`.
 ```bash
 cargo test
 ```
-Tất cả 36 unit tests và integration tests đều được kiểm chứng thành công.
+Kiểm thử đơn vị bao gồm chuyển đổi bản tin Tasmota, kiểm tra đơn vị và dải số đo, định tuyến chủ đề và giữ tương thích với bản tin chuẩn hóa.
+
+Để chạy phép thử MQTT với dịch vụ môi giới thử nghiệm đang hoạt động:
+```bash
+NANOMQ_TEST_URL=mqtt://127.0.0.1:1883 cargo test --test nanomq_flow -- --nocapture
+```
+Phép thử công bố bản tin Tasmota qua MQTT, kiểm tra số đo đã chuẩn hóa trong SQLite và hàng đợi gửi, đồng thời kiểm tra Gateway tiếp tục nhận sau bản tin lỗi. Đây là kiểm thử bằng phần mềm. Các kiểm thử cần `NANOMQ_TEST_URL` hoặc `THINGSBOARD_TEST_URL` bỏ qua bước kết nối khi biến tương ứng chưa được đặt, nên một lần chạy `cargo test` mặc định không chứng minh đã thử máy chủ thật.
