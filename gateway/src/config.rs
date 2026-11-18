@@ -2,6 +2,19 @@ use std::{collections::HashMap, net::SocketAddr, str::FromStr};
 
 use anyhow::{bail, Result};
 
+pub const DEFAULT_GATEWAY_IP: &str = "192.168.137.230";
+
+pub fn default_gateway_ip() -> String {
+    std::env::var("GATEWAY_IP")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_GATEWAY_IP.to_string())
+}
+
+pub fn default_firmware_url() -> String {
+    format!("http://{}:8080/firmware/esp2.bin", default_gateway_ip())
+}
+
 #[derive(Clone)]
 pub struct Config {
     pub nanomq_host: String,
@@ -15,6 +28,7 @@ pub struct Config {
     pub devices: Vec<DeviceConfig>,
     pub database_url: String,
     pub http_bind: SocketAddr,
+    pub gateway_ip: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,6 +90,12 @@ impl Config {
             .transpose()?
             .unwrap_or_else(|| "127.0.0.1:8080".parse().expect("valid default socket address"));
 
+        let gateway_ip = env
+            .get("GATEWAY_IP")
+            .filter(|value| !value.trim().is_empty())
+            .cloned()
+            .unwrap_or_else(default_gateway_ip);
+
         Ok(Self {
             nanomq_host: required("NANOMQ_HOST")?,
             nanomq_port: port("NANOMQ_PORT")?,
@@ -112,7 +132,12 @@ impl Config {
             },
             database_url: required("DATABASE_URL")?,
             http_bind,
+            gateway_ip,
         })
+    }
+
+    pub fn firmware_url(&self) -> String {
+        format!("http://{}:{}/firmware/esp2.bin", self.gateway_ip, self.http_bind.port())
     }
 }
 
@@ -134,7 +159,7 @@ mod tests {
             ("TB_DEVICE_ESP1", "ESP1"),
             ("TB_PROFILE_ESP1", "CO2 Sensor"),
             ("TB_DEVICE_ESP2", "ESP2"),
-            ("TB_PROFILE_ESP2", "TDS Sensor"),
+            ("TB_PROFILE_ESP2", "esp_hub"),
             ("TB_DEVICE_ESP3", "ESP3"),
             ("TB_PROFILE_ESP3", "esp_ble"),
             ("DATABASE_URL", "sqlite://gateway.db?mode=rwc"),
@@ -157,7 +182,7 @@ mod tests {
         assert_eq!(config.devices[0].profile, "CO2 Sensor");
         assert_eq!(config.devices[1].local_id, "esp2");
         assert_eq!(config.devices[1].name, "ESP2");
-        assert_eq!(config.devices[1].profile, "TDS Sensor");
+        assert_eq!(config.devices[1].profile, "esp_hub");
         assert_eq!(config.devices[2].local_id, "esp3");
         assert_eq!(config.devices[2].name, "ESP3");
         assert_eq!(config.devices[2].profile, "esp_ble");

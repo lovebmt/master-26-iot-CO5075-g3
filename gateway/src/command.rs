@@ -62,10 +62,11 @@ pub fn from_rpc(
     }
 
     if method_str == "ota_update" || method_str == "set_firmware" {
+        let fallback_url = crate::config::default_firmware_url();
         let url = params
             .get("url")
             .and_then(|v| v.as_str())
-            .unwrap_or("http://192.168.1.19:8080/firmware/esp2.bin");
+            .unwrap_or(&fallback_url);
         let version = params
             .get("version")
             .and_then(|v| v.as_str())
@@ -228,7 +229,7 @@ mod tests {
                 "id": 99,
                 "method": "ota_update",
                 "params": {
-                    "url": "http://192.168.1.19:8080/firmware/esp2.bin",
+                    "url": crate::config::default_firmware_url(),
                     "version": "v1.2.0",
                     "force": true
                 }

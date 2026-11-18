@@ -11,6 +11,9 @@ Thư mục này chứa toàn bộ tài liệu kiến trúc kỹ thuật, đặc 
   - Phân công nhiệm vụ chi tiết và kế hoạch viết báo cáo theo mẫu.
   - Quy tắc điều khiển tự động và cảnh báo bằng RuleChain (ngưỡng trễ Hysteresis).
   - Chi tiết kiến trúc OTA Firmware khép kín: kho lưu trữ CoreIOT OTA Packages, cơ chế Gateway Cache, và cấu hình Nginx/Minikube Ingress.
+* **[`kich-ban-video-demo.md`](kich-ban-video-demo.md)**:
+  - Kịch bản chi tiết quay video demo (07:30).
+  - Ánh xạ mốc thời gian với tiêu chí Rubric.
 * **[`hardware-architecture.md`](hardware-architecture.md)**:
   - Sơ đồ kiến trúc phần cứng các node: ESP1 (DHT20 I²C), ESP2 (ESP32-2432S028R ILI9341 + XPT2046 Touch + Light), ESP3 (PT100 RS485 Modbus + BLE).
   - Ma trận tiêu chí chấm điểm (Rubric T01–T14, N03).

@@ -51,6 +51,13 @@ impl LocalMqtt {
                         }
                     }
                     Ok(Event::Incoming(Packet::Publish(message))) => {
+                            t if t.starts_with("tele/") && t.ends_with("/SENSOR") => Some("esp1"),
+                        let payload_str = String::from_utf8_lossy(&message.payload);
+                        tracing::info!(
+                            topic = %message.topic,
+                            payload = %payload_str,
+                            "[Local MQTT RX] Ingested raw message from broker"
+                        );
                         let received_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
                             Ok(duration) => duration.as_millis().try_into().unwrap_or(i64::MAX),
                             Err(_) => {
@@ -65,11 +72,23 @@ impl LocalMqtt {
                             received_at_ms as u64,
                         ) {
                             Ok(item) => {
+                                let val_str = serde_json::to_string(&item.values).unwrap_or_default();
+                                tracing::info!(
+                                    device = %item.device_id,
+                                    tb_name = %item.thingsboard_name,
+                                    values = %val_str,
+                                    "[Telemetry Processed] Normalized & stored into local outbox"
+                                );
                                 if let Err(error) = store.save_telemetry(&item, received_at_ms).await {
                                     tracing::warn!(topic = %message.topic, reason = %error, "failed to store local MQTT telemetry");
                                 }
                             }
-                            Err(error) => tracing::warn!(topic = %message.topic, reason = %error, "discarding malformed local MQTT telemetry"),
+                            Err(error) => tracing::warn!(
+                                topic = %message.topic,
+                                payload = %payload_str,
+                                reason = %error,
+                                "[Telemetry Discarded] Malformed local MQTT telemetry"
+                            ),
                         }
                     }
                     Ok(_) => {}

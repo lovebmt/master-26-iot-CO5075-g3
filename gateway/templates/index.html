@@ -1,34 +1,100 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>IoT Gateway</title>
-<link rel="stylesheet" href="/static/style.css">
-<script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js" crossorigin="anonymous"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoreIOT Edge Gateway — Management Console</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
-<header class="app-header">
-  <h1>IoT Gateway — Management Console</h1>
-  <div class="user-meta">
-    <span>Logged in as: <strong>admin</strong></span>
-    <a href="/logout" class="logout-btn">Logout</a>
-  </div>
-</header>
+  <div class="container">
+    <!-- Top Navigation & Brand Header -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <div class="brand-icon">🌱</div>
+        <div class="brand-info">
+          <h1>IoT Edge Gateway</h1>
+          <div class="tagline">Nhóm 3 — Smart Mushroom Farm (CO5075)</div>
+        </div>
+      </div>
+      <div class="user-meta">
+        <span class="badge-role">
+          <span class="dot"></span>
+          <span>admin (Supervisor)</span>
+        </span>
+        <a href="/logout" class="logout-btn">
+          <span>Logout</span>
+          <span>&rarr;</span>
+        </a>
+      </div>
+    </header>
 
-<div class="cloud-status-card">
-  <h3>CoreIOT (ThingsBoard) Connection</h3>
-  <div class="cloud-grid">
-    <div><strong>Host:</strong> {{ tb_host }}:{{ tb_port }}</div>
-    <div><strong>Device:</strong> {{ tb_device }}</div>
-    <div><strong>Status:</strong> <span class="badge badge-ok">Connected (MQTT TLS)</span></div>
-  </div>
-</div>
+    <!-- Edge System Stat Cards -->
+    <section class="stats-grid">
+      <!-- Card 1: Cloud Connection -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Cloud Uplink</span>
+          <span class="stat-icon">☁️</span>
+        </div>
+        <div class="stat-value">CoreIOT</div>
+        <div class="stat-meta">
+          <span class="badge badge-ok">● Connected</span>
+          <span style="color:var(--text-muted);font-size:0.75rem;">(Tailscale VPN)</span>
+        </div>
+      </div>
 
-<main>
-  <div id="dashboard-content" hx-get="/devices" hx-trigger="load, every 5s" hx-swap="innerHTML">
-    Loading…
+      <!-- Card 2: ThingsBoard Gateway Identity -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Gateway ID</span>
+          <span class="stat-icon">🏷️</span>
+        </div>
+        <div class="stat-value" style="font-size:1.05rem;">{{ tb_device }}</div>
+        <div class="stat-meta">
+          <span>Host:</span>
+          <strong>{{ tb_host }}:{{ tb_port }}</strong>
+        </div>
+      </div>
+
+      <!-- Card 3: Local Edge Protocol -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Local Broker</span>
+          <span class="stat-icon">⚡</span>
+        </div>
+        <div class="stat-value">NanoMQ</div>
+        <div class="stat-meta">
+          <span>Port 1883</span> &bull; <span>BLE NUS Hub</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Container (Dynamically swapped by HTMX) -->
+    <main>
+      <div class="content-card">
+        <div class="card-header">
+          <h2>
+            <span>📡</span>
+            <span>Monitored Field Nodes</span>
+          </h2>
+          <div class="refresh-indicator">
+            <span class="badge-role" style="background:#fff;padding:0.2rem 0.6rem;font-size:0.75rem;">
+              <span class="dot"></span>
+              <span>Live polling (5s)</span>
+            </span>
+          </div>
+        </div>
+        
+        <div id="dashboard-content" hx-get="/devices" hx-trigger="load, every 5s" hx-swap="innerHTML">
+          <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⏳</div>
+            <div>Establishing link with edge broker and querying devices…</div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
-</main>
 </body>
 </html>
-

@@ -79,12 +79,12 @@ Mỗi người lưu tệp minh chứng và clip gốc trong thư mục chung, gh
 
 Toàn bộ logic tự động hóa được triển khai hoàn chỉnh trên **Root Rule Chain** của CoreIOT (`48e0fd00-d678-11f1-9301-8d833790fa1a`). Nhiệt độ không khí từ cảm biến **ESP1** (DHT20) được đưa vào chuỗi quy tắc để tự động ra lệnh bật/tắt máy lạnh (hệ thống làm mát) trên **ESP2** thông qua cơ chế RPC hai chiều qua Gateway.
 
-- **Cơ chế chống đóng ngắt liên tục (Hysteresis):** Thiết lập dải trễ 3°C giữa ngưỡng bật (> 29°C) và ngưỡng tắt (< 26°C). Khi nhiệt độ vượt 29°C, làm mát bật và duy trì hoạt động đến khi nhiệt độ hạ hẳn dưới 26°C mới ngắt; ngược lại khi đang tắt, máy lạnh chỉ bật lại khi nhiệt độ vượt quá 29°C, tránh việc relay/thiết bị đóng ngắt liên tục quanh một điểm đặt.
+- **Cơ chế chống đóng ngắt liên tục (Hysteresis):** Thiết lập dải trễ 3°C giữa ngưỡng bật (> 29°C) và ngưỡng tắt (< 26°C). Khi nhiệt độ vượt 29°C, làm mát bật và duy trì hoạt động đến khi nhiệt độ hạ hẳn dưới 27°C mới ngắt; ngược lại khi đang tắt, máy lạnh chỉ bật lại khi nhiệt độ vượt quá 29°C, tránh việc relay/thiết bị đóng ngắt liên tục quanh một điểm đặt.
 
 | Điều kiện | Trạng thái trước đó | Hành động | Thiết bị thực thi |
 |---|---|---|---|
 | Nhiệt độ > 29°C | Đang tắt hoặc chưa bật | Bật làm mát (`Air.Con: ON`) | ESP2 (Relay / GPIO 4) |
-| 26°C ≤ Nhiệt độ ≤ 29°C | Đang chạy hoặc đang tắt | Giữ nguyên trạng thái hiện tại (dải trễ Hysteresis 3°C) | ESP2 |
+| 27°C ≤ Nhiệt độ ≤ 29°C | Đang chạy hoặc đang tắt | Giữ nguyên trạng thái hiện tại (dải trễ Hysteresis 3°C) | ESP2 |
 | Nhiệt độ < 26°C | Đang chạy | Tắt làm mát (`Air.Con: OFF`) | ESP2 (Relay / GPIO 4) |
 
 - **Luồng truyền lệnh RPC tự động từ RuleChain xuống phần cứng ESP2:**
@@ -136,7 +136,7 @@ flowchart TD
 
     subgraph AIRCON_RPC["Nhánh Điều Khiển Tự Động Máy Lạnh (Air.Con RPC Loop)"]
         SW -->|AirConOn| RPC_ON["Prepare RPC AirCon ON<br/>(set_light: true, > 29°C)"]
-        SW -->|AirConOff| RPC_OFF["Prepare RPC AirCon OFF<br/>(set_light: false, < 26°C)"]
+        SW -->|AirConOff| RPC_OFF["Prepare RPC AirCon OFF<br/>(set_light: false, < 27°C)"]
         RPC_ON --> ORIG["Change Originator to ESP2<br/>(TbChangeOriginatorNode)"]
         RPC_OFF --> ORIG
         ORIG --> SEND_RPC["Send AirCon RPC to ESP2<br/>(TbSendRPCRequestNode)"]

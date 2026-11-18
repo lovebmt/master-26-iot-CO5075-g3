@@ -3,7 +3,7 @@
     "entityType": "RULE_CHAIN",
     "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
   },
-  "version": 8,
+  "version": 13,
   "firstNodeIndex": 6,
   "nodes": [
     {
@@ -197,9 +197,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e154dd0-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649b2d30-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338669,
+      "createdTime": 1794793525123,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -213,8 +213,8 @@
       "externalId": null,
       "configuration": {
         "scriptLang": "JS",
-        "jsScript": "var relations = [];\n\nfunction getNum(val) {\n    if (val === null || val === undefined) return null;\n    var n = parseFloat(val);\n    return isNaN(n) ? null : n;\n}\n\n// 1. Air Temperature (ESP1)\nvar t = getNum(msg.temperature);\nif (t === null && msg.values) t = getNum(msg.values.temperature);\nif (t !== null) {\n    // Alarm High/Low\n    if (t > 30.0) {\n        relations.push('AirTempHigh');\n    } else if (t <= 29.0) {\n        relations.push('ClearAirTempHigh');\n    }\n    \n    if (t < 24.0) {\n        relations.push('AirTempLow');\n    } else if (t >= 25.0) {\n        relations.push('ClearAirTempLow');\n    }\n\n    // Air Conditioner Automatic Control\n    if (t > 29.0) {\n        relations.push('AirConOn');\n    } else if (t < 26.0) {\n        relations.push('AirConOff');\n    }\n}\n\n// 2. Air Humidity (ESP1)\nvar h = getNum(msg.humidity);\nif (h === null && msg.values) h = getNum(msg.values.humidity);\nif (h !== null) {\n    if (h > 95.0) {\n        relations.push('AirHumiHigh');\n    } else if (h <= 93.0) {\n        relations.push('ClearAirHumiHigh');\n    }\n    \n    if (h < 80.0) {\n        relations.push('AirHumiLow');\n    } else if (h >= 82.0) {\n        relations.push('ClearAirHumiLow');\n    }\n}\n\n// 3. Soil Temperature (ESP2 / ESP3)\nvar st = getNum(msg.soil_temp);\nif (st === null && msg.values) st = getNum(msg.values.soil_temp);\nif (st !== null) {\n    if (st > 32.0) {\n        relations.push('SoilTempHigh');\n    } else if (st <= 31.0) {\n        relations.push('ClearSoilTempHigh');\n    }\n    \n    if (st < 20.0) {\n        relations.push('SoilTempLow');\n    } else if (st >= 21.0) {\n        relations.push('ClearSoilTempLow');\n    }\n}\n\nreturn relations;",
-        "tbelScript": "var relations = [];\n\nfunction getNum(val) {\n    if (val === null || val === undefined) return null;\n    var n = parseFloat(val);\n    return isNaN(n) ? null : n;\n}\n\n// 1. Air Temperature (ESP1)\nvar t = getNum(msg.temperature);\nif (t === null && msg.values) t = getNum(msg.values.temperature);\nif (t !== null) {\n    // Alarm High/Low\n    if (t > 30.0) {\n        relations.push('AirTempHigh');\n    } else if (t <= 29.0) {\n        relations.push('ClearAirTempHigh');\n    }\n    \n    if (t < 24.0) {\n        relations.push('AirTempLow');\n    } else if (t >= 25.0) {\n        relations.push('ClearAirTempLow');\n    }\n\n    // Air Conditioner Automatic Control\n    if (t > 29.0) {\n        relations.push('AirConOn');\n    } else if (t < 26.0) {\n        relations.push('AirConOff');\n    }\n}\n\n// 2. Air Humidity (ESP1)\nvar h = getNum(msg.humidity);\nif (h === null && msg.values) h = getNum(msg.values.humidity);\nif (h !== null) {\n    if (h > 95.0) {\n        relations.push('AirHumiHigh');\n    } else if (h <= 93.0) {\n        relations.push('ClearAirHumiHigh');\n    }\n    \n    if (h < 80.0) {\n        relations.push('AirHumiLow');\n    } else if (h >= 82.0) {\n        relations.push('ClearAirHumiLow');\n    }\n}\n\n// 3. Soil Temperature (ESP2 / ESP3)\nvar st = getNum(msg.soil_temp);\nif (st === null && msg.values) st = getNum(msg.values.soil_temp);\nif (st !== null) {\n    if (st > 32.0) {\n        relations.push('SoilTempHigh');\n    } else if (st <= 31.0) {\n        relations.push('ClearSoilTempHigh');\n    }\n    \n    if (st < 20.0) {\n        relations.push('SoilTempLow');\n    } else if (st >= 21.0) {\n        relations.push('ClearSoilTempLow');\n    }\n}\n\nreturn relations;"
+        "jsScript": "var relations = [];\n\nfunction getNum(val) {\n    if (val === null || val === undefined) return null;\n    var n = parseFloat(val);\n    return isNaN(n) ? null : n;\n}\n\n// 1. Air Temperature (ESP1)\nvar t = getNum(msg.temperature);\nif (t === null && msg.values) t = getNum(msg.values.temperature);\nif (t !== null) {\n    // Alarm High/Low\n    if (t > 29.0) {\n        relations.push('AirTempHigh');\n    } else if (t <= 27.0) {\n        relations.push('ClearAirTempHigh');\n    }\n    \n    if (t < 24.0) {\n        relations.push('AirTempLow');\n    } else if (t >= 25.0) {\n        relations.push('ClearAirTempLow');\n    }\n\n    // Air Conditioner Automatic Control\n    if (t > 29.0) {\n        relations.push('AirConOn');\n    } else if (t < 27.0) {\n        relations.push('AirConOff');\n    }\n}\n\n// 2. Air Humidity (ESP1)\nvar h = getNum(msg.humidity);\nif (h === null && msg.values) h = getNum(msg.values.humidity);\nif (h !== null) {\n    if (h > 95.0) {\n        relations.push('AirHumiHigh');\n    } else if (h <= 93.0) {\n        relations.push('ClearAirHumiHigh');\n    }\n    \n    if (h < 80.0) {\n        relations.push('AirHumiLow');\n    } else if (h >= 82.0) {\n        relations.push('ClearAirHumiLow');\n    }\n}\n\n// 3. Soil Temperature (ESP2 / ESP3 / PT100)\nvar st = getNum(msg.soil_temp);\nif (st === null) st = getNum(msg.soil_temp_c);\nif (st === null && msg.values) st = getNum(msg.values.soil_temp);\nif (st === null && msg.values) st = getNum(msg.values.soil_temp_c);\nif (st !== null) {\n    if (st > 32.0) {\n        relations.push('SoilTempHigh');\n    } else if (st <= 31.0) {\n        relations.push('ClearSoilTempHigh');\n    }\n    \n    if (st < 20.0) {\n        relations.push('SoilTempLow');\n    } else if (st >= 21.0) {\n        relations.push('ClearSoilTempLow');\n    }\n\n    // Air Conditioner Automatic Control for Soil Temp (PT100)\n    if (st > 29.0) {\n        relations.push('AirConOn');\n    } else if (st < 27.0) {\n        relations.push('AirConOff');\n    }\n}\n\nreturn relations;",
+        "tbelScript": "var relations = [];\n\nfunction getNum(val) {\n    if (val === null || val === undefined) return null;\n    var n = parseFloat(val);\n    return isNaN(n) ? null : n;\n}\n\n// 1. Air Temperature (ESP1)\nvar t = getNum(msg.temperature);\nif (t === null && msg.values) t = getNum(msg.values.temperature);\nif (t !== null) {\n    // Alarm High/Low\n    if (t > 29.0) {\n        relations.push('AirTempHigh');\n    } else if (t <= 27.0) {\n        relations.push('ClearAirTempHigh');\n    }\n    \n    if (t < 24.0) {\n        relations.push('AirTempLow');\n    } else if (t >= 25.0) {\n        relations.push('ClearAirTempLow');\n    }\n\n    // Air Conditioner Automatic Control\n    if (t > 29.0) {\n        relations.push('AirConOn');\n    } else if (t < 27.0) {\n        relations.push('AirConOff');\n    }\n}\n\n// 2. Air Humidity (ESP1)\nvar h = getNum(msg.humidity);\nif (h === null && msg.values) h = getNum(msg.values.humidity);\nif (h !== null) {\n    if (h > 95.0) {\n        relations.push('AirHumiHigh');\n    } else if (h <= 93.0) {\n        relations.push('ClearAirHumiHigh');\n    }\n    \n    if (h < 80.0) {\n        relations.push('AirHumiLow');\n    } else if (h >= 82.0) {\n        relations.push('ClearAirHumiLow');\n    }\n}\n\n// 3. Soil Temperature (ESP2 / ESP3 / PT100)\nvar st = getNum(msg.soil_temp);\nif (st === null) st = getNum(msg.soil_temp_c);\nif (st === null && msg.values) st = getNum(msg.values.soil_temp);\nif (st === null && msg.values) st = getNum(msg.values.soil_temp_c);\nif (st !== null) {\n    if (st > 32.0) {\n        relations.push('SoilTempHigh');\n    } else if (st <= 31.0) {\n        relations.push('ClearSoilTempHigh');\n    }\n    \n    if (st < 20.0) {\n        relations.push('SoilTempLow');\n    } else if (st >= 21.0) {\n        relations.push('ClearSoilTempLow');\n    }\n\n    // Air Conditioner Automatic Control for Soil Temp (PT100)\n    if (st > 29.0) {\n        relations.push('AirConOn');\n    } else if (st < 27.0) {\n        relations.push('AirConOff');\n    }\n}\n\nreturn relations;"
       },
       "additionalInfo": {
         "description": "Checks Hysteresis thresholds for Alarms and Air.Con automatic control",
@@ -225,9 +225,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e1574e0-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649b5440-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338670,
+      "createdTime": 1794793525124,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -261,9 +261,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e159bf0-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649b7b50-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338671,
+      "createdTime": 1794793525125,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -289,9 +289,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e15c300-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649ba260-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338672,
+      "createdTime": 1794793525126,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -325,9 +325,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e15c301-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649ba261-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338672,
+      "createdTime": 1794793525126,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -353,9 +353,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e15ea10-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649bc970-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338673,
+      "createdTime": 1794793525127,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -389,9 +389,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e161120-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649bf080-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338674,
+      "createdTime": 1794793525128,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -417,9 +417,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e168650-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649c1790-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338677,
+      "createdTime": 1794793525129,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -453,9 +453,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e16ad60-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649c1791-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338678,
+      "createdTime": 1794793525129,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -481,9 +481,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e16d470-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649c3ea0-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338679,
+      "createdTime": 1794793525130,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -517,9 +517,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e16fb80-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649c65b0-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338680,
+      "createdTime": 1794793525131,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -545,9 +545,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e16fb81-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649c65b1-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338680,
+      "createdTime": 1794793525131,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -581,9 +581,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e172290-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649c8cc0-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338681,
+      "createdTime": 1794793525132,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -609,9 +609,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e1770b0-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649cb3d0-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338683,
+      "createdTime": 1794793525133,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -625,8 +625,8 @@
       "externalId": null,
       "configuration": {
         "scriptLang": "JS",
-        "jsScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};",
-        "tbelScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};"
+        "jsScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};",
+        "tbelScript": "var newMsg = { method: 'set_light', params: { state: true } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};"
       },
       "additionalInfo": {
         "layoutX": 1450,
@@ -636,9 +636,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e1797c0-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649cdae0-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338684,
+      "createdTime": 1794793525134,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -652,8 +652,8 @@
       "externalId": null,
       "configuration": {
         "scriptLang": "JS",
-        "jsScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};",
-        "tbelScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'POST_TELEMETRY_REQUEST'};"
+        "jsScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};",
+        "tbelScript": "var newMsg = { method: 'set_light', params: { state: false } }; metadata.oneway = 'true'; return {msg: newMsg, metadata: metadata, msgType: 'RPC_CALL_FROM_SERVER_TO_DEVICE'};"
       },
       "additionalInfo": {
         "layoutX": 1450,
@@ -663,9 +663,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e180cf0-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649d01f0-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338687,
+      "createdTime": 1794793525135,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"
@@ -690,9 +690,9 @@
     {
       "id": {
         "entityType": "RULE_NODE",
-        "id": "8e183400-d9a8-11f1-9301-8d833790fa1a"
+        "id": "649d2900-e15f-11f1-979d-0df8e7a278cb"
       },
-      "createdTime": 1793945338688,
+      "createdTime": 1794793525136,
       "ruleChainId": {
         "entityType": "RULE_CHAIN",
         "id": "48e0fd00-d678-11f1-9301-8d833790fa1a"

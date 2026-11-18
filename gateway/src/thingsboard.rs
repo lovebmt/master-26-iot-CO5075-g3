@@ -30,20 +30,16 @@ impl ThingsBoard {
         }
         let (client, mut eventloop) = AsyncClient::new(opts, 64);
 
-        client.subscribe("v1/gateway/rpc", QoS::AtLeastOnce).await?;
+        let _ = client.subscribe("v1/gateway/rpc", QoS::AtLeastOnce).await;
 
         let (rpc_tx, rpc_rx) = mpsc::channel::<Value>(64);
-        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<()>();
 
         let event_client = client.clone();
         let event_task = tokio::spawn(async move {
-            let mut ready_tx = Some(ready_tx);
             loop {
                 match eventloop.poll().await {
                     Ok(Event::Incoming(Packet::SubAck(_))) => {
-                        if let Some(tx) = ready_tx.take() {
-                            let _ = tx.send(());
-                        }
+                        tracing::info!("ThingsBoard RPC subscribed successfully");
                     }
                     Ok(Event::Incoming(Packet::Publish(msg))) => {
                         if msg.topic == "v1/gateway/rpc" {
@@ -56,22 +52,18 @@ impl ThingsBoard {
                     Ok(_) => {}
                     Err(e) => {
                         tracing::warn!(reason = %e, "ThingsBoard MQTT connection error");
-                        tokio::time::sleep(Duration::from_millis(500)).await;
+                        tokio::time::sleep(Duration::from_millis(1500)).await;
                     }
                 }
                 let _ = &event_client;
             }
         });
 
-        tokio::time::timeout(Duration::from_secs(30), ready_rx)
-            .await
-            .map_err(|_| anyhow::anyhow!("ThingsBoard subscribe timed out"))??;
-
         for dev in devices {
             let payload = json!({"device": dev.name, "type": dev.profile}).to_string();
-            client
+            let _ = client
                 .publish("v1/gateway/connect", QoS::AtLeastOnce, false, payload.as_bytes())
-                .await?;
+                .await;
         }
 
         let outbox_task = OutboxWorker::spawn(store, client.clone());

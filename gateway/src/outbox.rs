@@ -60,6 +60,13 @@ async fn deliver(store: &Store, client: &AsyncClient, row: &OutboxEntry) {
         .await
     {
         Ok(()) => {
+            tracing::info!(
+                outbox_id = row.id,
+                device = %row.device_id,
+                tb_name = %tb_name,
+                payload = %tb_payload,
+                "[CoreIOT Uplink] Forwarded telemetry to ThingsBoard"
+            );
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(&row.payload_json) {
                 if let Some(light_on) = v.get("values").and_then(|val| val.get("light_on")).and_then(|l| l.as_bool()) {
                     let attr_payload = serde_json::json!({
@@ -69,6 +76,11 @@ async fn deliver(store: &Store, client: &AsyncClient, row: &OutboxEntry) {
                         }
                     }).to_string();
                     let _ = client.publish("v1/gateway/attributes", QoS::AtLeastOnce, false, attr_payload.as_bytes()).await;
+                    tracing::info!(
+                        tb_name = %tb_name,
+                        payload = %attr_payload,
+                        "[CoreIOT Uplink] Synchronized attributes to ThingsBoard"
+                    );
                 }
             }
             if let Err(e) = store.mark_delivered(row.id).await {
